@@ -31,3 +31,4 @@ local.properties
 /gradle/libs.versions.toml
 /gradlew
 /gradlew.bat
+/.idea/

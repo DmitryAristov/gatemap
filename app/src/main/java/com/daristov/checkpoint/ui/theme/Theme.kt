@@ -3,6 +3,7 @@ package com.daristov.checkpoint.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import com.daristov.checkpoint.viewmodel.AppThemeMode
 
 private val LightColors = lightColorScheme(
     primary = LightPrimary,
@@ -18,14 +19,19 @@ private val DarkColors = darkColorScheme(
 
 @Composable
 fun AppTheme(
-    useDarkTheme: Boolean = isSystemInDarkTheme(),
+    themeMode: AppThemeMode,
     content: @Composable () -> Unit
 ) {
-    val colors = if (useDarkTheme) DarkColors else LightColors
+    val isDark = when (themeMode) {
+        AppThemeMode.DARK -> true
+        AppThemeMode.LIGHT -> false
+        AppThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
 
     MaterialTheme(
-        colorScheme = colors,
+        colorScheme = if (isDark) DarkColors else LightColors,
         typography = Typography(),
         content = content
     )
 }
+
