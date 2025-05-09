@@ -13,19 +13,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 enum class AppThemeMode { LIGHT, DARK, SYSTEM }
-enum class DetectionSensitivity { LOW, MEDIUM, HIGH }
 enum class AppLanguage { RU, KZ, EN }
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val pref = SettingsPreferenceManager(application.applicationContext)
     private val _themeMode = MutableStateFlow(AppThemeMode.SYSTEM)
-    private val _sensitivity = MutableStateFlow(DetectionSensitivity.MEDIUM)
+    private val _sensitivity = MutableStateFlow(70)
     private val _language = MutableStateFlow(AppLanguage.RU)
 
     val themeMode: StateFlow<AppThemeMode> = _themeMode
     var selectedAlarmUri by mutableStateOf<Uri?>(null)
         private set
-    val sensitivity: StateFlow<DetectionSensitivity> = _sensitivity
+    val sensitivity: StateFlow<Int> = _sensitivity
     val language: StateFlow<AppLanguage> = _language
 
     init {
@@ -55,15 +54,17 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { pref.setAlarmUri(uri) }
     }
 
-    fun changeSensitivity(s: DetectionSensitivity) {
-        viewModelScope.launch { pref.setDetectionSensitivity(s) }
-    }
-
     fun changeLanguage(lang: AppLanguage) {
         viewModelScope.launch {
             pref.setLanguage(lang)
         }
     }
+
+    fun changeSensitivity(value: Int) {
+        _sensitivity.value = value
+        viewModelScope.launch { pref.setDetectionSensitivity(value) }
+    }
+
 }
 
 

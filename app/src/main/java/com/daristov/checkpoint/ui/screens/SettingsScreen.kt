@@ -21,12 +21,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.daristov.checkpoint.viewmodel.AppLanguage
 import com.daristov.checkpoint.viewmodel.AppThemeMode
-import com.daristov.checkpoint.viewmodel.DetectionSensitivity
 import com.daristov.checkpoint.viewmodel.SettingsViewModel
 
 const val iconToTextRatio = 2.5f
@@ -37,39 +37,46 @@ fun SettingsScreen(navController: NavHostController, viewModel: SettingsViewMode
 
     Column(modifier = Modifier
         .fillMaxSize()
-        .padding(16.dp)) {
+        .padding(16.dp) ) {
 
-        Spacer(Modifier.height(16.dp))
+        val iconSizeDp = getIconSizeDp()
+
+        Spacer(Modifier.height(30.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { navController.navigate("map") }) {
+            IconButton(onClick = { navController.navigate("map") },
+                modifier = Modifier.size(iconSizeDp)) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
             }
             Text("Назад", style = MaterialTheme.typography.titleLarge)
         }
+        Spacer(Modifier.height(15.dp))
 
-        HorizontalDivider(Modifier.padding(vertical = 6.dp))
+        HorizontalDivider(Modifier.padding(vertical = 3.dp))
         Spacer(Modifier.height(8.dp))
         ThemeSelector(viewModel)
 
-        HorizontalDivider(Modifier.padding(vertical = 6.dp))
-        DetectionSensitivitySelector(viewModel)
+        HorizontalDivider(Modifier.padding(vertical = 3.dp))
+        SensitivitySlider(viewModel)
 
-        HorizontalDivider(Modifier.padding(vertical = 6.dp))
+        HorizontalDivider(Modifier.padding(vertical = 3.dp))
         RingtonePicker(
             context = context,
             selectedAlarmUri = viewModel.selectedAlarmUri,
             onPicked = { viewModel.changeAlarmUri(it) }
         )
 
-        HorizontalDivider(Modifier.padding(vertical = 6.dp))
+        HorizontalDivider(Modifier.padding(vertical = 3.dp))
         LanguageDropdown(viewModel)
-        HorizontalDivider(Modifier.padding(vertical = 6.dp))
+        HorizontalDivider(Modifier.padding(vertical = 3.dp))
     }
 
-    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Bottom) {
-        HorizontalDivider(Modifier.padding(vertical = 6.dp))
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .padding(16.dp),
+        verticalArrangement = Arrangement.Bottom) {
+        HorizontalDivider(Modifier.padding(vertical = 3.dp))
         AboutItem(navController)
-        HorizontalDivider(Modifier.padding(vertical = 6.dp))
+        HorizontalDivider(Modifier.padding(vertical = 3.dp))
     }
 }
 
@@ -127,25 +134,28 @@ fun RingtonePicker(context: Context, selectedAlarmUri: Uri?, onPicked: (Uri) -> 
 }
 
 @Composable
-fun DetectionSensitivitySelector(viewModel: SettingsViewModel) {
-    val currentSensitivity by viewModel.sensitivity.collectAsState()
+fun SensitivitySlider(viewModel: SettingsViewModel) {
+    val sensitivity by viewModel.sensitivity.collectAsState()
 
-    Text("Чувствительность детекции", style = MaterialTheme.typography.titleMedium)
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        RadioButton(selected = currentSensitivity == DetectionSensitivity.LOW, onClick = {
-            viewModel.changeSensitivity(DetectionSensitivity.LOW)
-        })
-        Text("Слабая", Modifier.padding(end = 8.dp))
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 12.dp)) {
 
-        RadioButton(selected = currentSensitivity == DetectionSensitivity.MEDIUM, onClick = {
-            viewModel.changeSensitivity(DetectionSensitivity.MEDIUM)
-        })
-        Text("Средняя", Modifier.padding(end = 8.dp))
+        Text("Чувствительность детекции", style = MaterialTheme.typography.titleMedium)
 
-        RadioButton(selected = currentSensitivity == DetectionSensitivity.HIGH, onClick = {
-            viewModel.changeSensitivity(DetectionSensitivity.HIGH)
-        })
-        Text("Высокая", Modifier.padding(end = 8.dp))
+        Slider(
+            value = sensitivity.toFloat(),
+            onValueChange = { viewModel.changeSensitivity(it.toInt()) },
+            valueRange = 0f..100f
+        )
+
+        val label = when {
+            sensitivity < 35 -> "Низкая"
+            sensitivity < 70 -> "Средняя"
+            else -> "Высокая"
+        }
+
+        Text("Текущий уровень: $sensitivity ($label)")
     }
 }
 
@@ -161,12 +171,7 @@ fun LanguageDropdown(viewModel: SettingsViewModel) {
     )
 
     var expanded by remember { mutableStateOf(false) }
-
-    val textStyle = MaterialTheme.typography.bodyLarge
-    val density = LocalDensity.current
-    val iconSizeDp = with(density) {
-        (textStyle.fontSize * iconToTextRatio).toDp()
-    }
+    val iconSizeDp = getIconSizeDp()
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -227,11 +232,7 @@ fun SettingItem(
     text: String,
     onClick: () -> Unit,
 ) {
-    val density = LocalDensity.current
-    val textStyle = MaterialTheme.typography.bodyLarge
-    val iconSizeDp = with(density) {
-        (textStyle.fontSize * iconToTextRatio).toDp()
-    }
+    val iconSizeDp = getIconSizeDp()
 
     Row(
         modifier = Modifier
@@ -253,4 +254,14 @@ fun SettingItem(
             modifier = Modifier.weight(1f) // ← это вытягивает текст на всё оставшееся место
         )
     }
+}
+
+@Composable
+private fun getIconSizeDp(): Dp {
+    val density = LocalDensity.current
+    val textStyle = MaterialTheme.typography.bodyLarge
+    val iconSizeDp = with(density) {
+        (textStyle.fontSize * iconToTextRatio).toDp()
+    }
+    return iconSizeDp
 }
