@@ -13,6 +13,8 @@ import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sin
 
 class ContourDetectorTest {
@@ -27,18 +29,7 @@ class ContourDetectorTest {
         val inputMat = Imgcodecs.imread("src/test/resources/sample2.jpg")
         assertFalse("Изображение не загружено", inputMat.empty())
 
-        val contour = findVehicleContourByLines(inputMat, blurSize = 5, cannyThreshold1 = 40.0, cannyThreshold2 = 120.0)
-        println("contour size: " + contour?.size())
-
-        // Нарисуем
-        if (contour != null) {
-            Imgproc.rectangle(inputMat, contour, Scalar(0.0, 255.0, 0.0), 3)
-            Imgcodecs.imwrite("output_with_box.png", inputMat)
-            Imgcodecs.imwrite(File(File("src/test/resources"), "output_with_box.png").absolutePath, inputMat)
-        } else {
-            println("Контур не найден.")
-        }
-        println("Saved to src/test/resources/output_with_box.png")
+        findVehicleContourByLines(inputMat, blurSize = 5, cannyThreshold1 = 40.0, cannyThreshold2 = 120.0)
     }
 
     fun findVehicleContourByLines(
@@ -47,7 +38,7 @@ class ContourDetectorTest {
         cannyThreshold1: Double = 100.0,
         cannyThreshold2: Double = 200.0,
         debugOutputDir: File = File("src/test/resources")
-    ): Rect? {
+    ) {
         require(blurSize % 2 == 1) { "blurSize must be odd (e.g. 3, 5, 7)" }
 
         if (!debugOutputDir.exists()) debugOutputDir.mkdirs()
@@ -104,14 +95,16 @@ class ContourDetectorTest {
 
         if (vertical.size < 2 || horizontal.size < 2) {
             println("Недостаточно линий для формирования прямоугольника")
-            return null
+            return
         }
         val minLineLength = 50
         val verticalFiltered = vertical.filter { abs(it.y2 - it.y1) > minLineLength }
         val horizontalFiltered = horizontal.filter { abs(it.x2 - it.x1) > minLineLength }
 
-        val verticalMerged = mergeLines(verticalFiltered)
-        val horizontalMerged = mergeLines(horizontalFiltered)
+//        val verticalMerged = mergeLines(verticalFiltered)
+//        val horizontalMerged = mergeLines(horizontalFiltered)
+        val verticalMerged = mergeVerticalLinesByRectangleStrict(verticalFiltered)
+        val horizontalMerged = mergeHorizontalLinesByRectangleStrict(horizontalFiltered)
 
         drawMergedLines(
             morph.size(),
@@ -120,94 +113,214 @@ class ContourDetectorTest {
             File(debugOutputDir, "step7_merged_all_lines.png")
         )
 
-        val xPositions = verticalMerged.map { minOf(it.x1, it.x2) }
-        val yPositions = horizontalMerged.map { minOf(it.y1, it.y2) }
-
-        val (xMin, xMax) = getBoundaries(xPositions) ?: return null
-        val (yMin, yMax) = getBoundaries(yPositions) ?: return null
-
-        val boundingRect = Rect(Point(xMin.toDouble(), yMin.toDouble()), Point(xMax.toDouble(), yMax.toDouble()))
-
-        // Step 8: Отрисовка финального прямоугольника
-        val resultWithBox = inputMat.clone()
-        Imgproc.rectangle(resultWithBox, boundingRect, Scalar(0.0, 255.0, 255.0), 3)
-        Imgcodecs.imwrite(File(debugOutputDir, "step8_final_result.png").absolutePath, resultWithBox)
-
-        return boundingRect
+        val quadBox = findTruckQuadFromLines(verticalMerged, horizontalMerged)
+        if (quadBox != null) {
+            val imageWithBox = drawQuadBox(inputMat, quadBox)
+            Imgcodecs.imwrite(File(debugOutputDir, "step8_final_result.png").absolutePath, imageWithBox)
+        }
     }
 
-    fun mergeLines(
-        lines: List<Line>,
-        angleTolerance: Double = 10.0,
-        distanceThreshold: Int = 30
-    ): List<Line> {
-        val merged = mutableListOf<Line>()
-        val used = BooleanArray(lines.size)
+    fun findTruckQuadFromLines(
+        verticalLines: List<Line>,
+        horizontalLines: List<Line>,
+        cornerTolerance: Int = 50
+    ): QuadBox? {
+        val sortedVertical = verticalLines.sortedBy { it.centerX() }
 
-        for (i in lines.indices) {
-            if (used[i]) continue
-            val base = lines[i]
-            val group = mutableListOf(base)
-            used[i] = true
+        for (i in sortedVertical.indices) {
+            for (j in sortedVertical.lastIndex downTo i + 1) {
+                val left = sortedVertical[i]
+                val right = sortedVertical[j]
 
-            for (j in i + 1 until lines.size) {
-                if (used[j]) continue
-                val candidate = lines[j]
+                if (right.centerX() - left.centerX() < 100) continue
 
-                val similar = abs(base.angle() - candidate.angle()) < angleTolerance &&
-                        distanceBetweenLines(base, candidate) < distanceThreshold
+                for (h in horizontalLines) {
+                    val hY = h.centerY()
+                    val leftBottom = if (left.y1 > left.y2) Point(left.x1.toDouble(),
+                        left.y1.toDouble()
+                    ) else Point(left.x2.toDouble(), left.y2.toDouble())
+                    val rightBottom = if (right.y1 > right.y2) Point(right.x1.toDouble(),
+                        right.y1.toDouble()
+                    ) else Point(right.x2.toDouble(), right.y2.toDouble())
 
-                if (similar) {
-                    group.add(candidate)
-                    used[j] = true
+                    val hX1 = minOf(h.x1, h.x2)
+                    val hX2 = maxOf(h.x1, h.x2)
+                    val x1 = minOf(leftBottom.x, rightBottom.x)
+                    val x2 = maxOf(leftBottom.x, rightBottom.x)
+
+                    val xMatch = abs(hX1 - x1) < cornerTolerance && abs(hX2 - x2) < cornerTolerance
+                    val yMatch = abs(hY - leftBottom.y) < cornerTolerance && abs(hY - rightBottom.y) < cornerTolerance
+
+                    if (xMatch && yMatch) {
+                        val leftTop = if (left.y1 < left.y2) Point(left.x1.toDouble(),
+                            left.y1.toDouble()
+                        ) else Point(left.x2.toDouble(), left.y2.toDouble())
+                        val rightTop = if (right.y1 < right.y2) Point(right.x1.toDouble(),
+                            right.y1.toDouble()
+                        ) else Point(right.x2.toDouble(), right.y2.toDouble())
+
+                        return QuadBox(
+                            topLeft = leftTop,
+                            topRight = rightTop,
+                            bottomRight = rightBottom,
+                            bottomLeft = leftBottom
+                        )
+                    }
                 }
             }
+        }
 
-            // Средняя точка и угол
-            val allPoints = group.flatMap { listOf(Point(it.x1.toDouble(), it.y1.toDouble()), Point(it.x2.toDouble(), it.y2.toDouble())) }
-            val avgX = allPoints.map { it.x }.average()
-            val avgY = allPoints.map { it.y }.average()
-            val avgAngle = group.map { it.angle() }.average()
+        return null
+    }
 
-            // Общая длина по охватывающей прямоугольной рамке
-            val minX = allPoints.minOf { it.x }
-            val maxX = allPoints.maxOf { it.x }
-            val minY = allPoints.minOf { it.y }
-            val maxY = allPoints.maxOf { it.y }
+    fun drawQuadBox(image: Mat, box: QuadBox, color: Scalar = Scalar(0.0, 255.0, 255.0), thickness: Int = 4): Mat {
+        val output = image.clone()
 
-            val lineLength = hypot(maxX - minX, maxY - minY)
+        val points = listOf(
+            box.topLeft,
+            box.topRight,
+            box.bottomRight,
+            box.bottomLeft
+        )
 
-            // Строим новую линию от центра в обе стороны
-            val angleRad = Math.toRadians(avgAngle)
-            val dx = cos(angleRad) * lineLength / 2.0
-            val dy = sin(angleRad) * lineLength / 2.0
+        for (i in points.indices) {
+            val pt1 = points[i]
+            val pt2 = points[(i + 1) % points.size]
+            Imgproc.line(output, pt1, pt2, color, thickness)
+        }
 
-            val x1 = (avgX - dx).toInt()
-            val y1 = (avgY - dy).toInt()
-            val x2 = (avgX + dx).toInt()
-            val y2 = (avgY + dy).toInt()
+        return output
+    }
 
-            merged.add(Line(x1, y1, x2, y2))
+
+    data class QuadBox(val topLeft: Point, val topRight: Point, val bottomRight: Point, val bottomLeft: Point)
+
+    fun mergeVerticalLinesByRectangleStrict(
+        lines: List<Line>,
+        xTolerance: Int = 20,
+        extendY: Int = 500
+    ): List<Line> {
+        val remaining = lines.toMutableList()
+        val merged = mutableListOf<Line>()
+
+        while (remaining.isNotEmpty()) {
+            val base = remaining.removeAt(0)
+
+            val baseX = base.centerX()
+            var minY = base.minY() - extendY
+            var maxY = base.maxY() + extendY
+
+            val cluster = mutableListOf(base)
+
+            var mergedSomething: Boolean
+            do {
+                mergedSomething = false
+                val iterator = remaining.iterator()
+
+                while (iterator.hasNext()) {
+                    val other = iterator.next()
+                    val x = other.centerX()
+                    val y1 = other.minY()
+                    val y2 = other.maxY()
+
+                    val insideX = x in (baseX - xTolerance)..(baseX + xTolerance)
+                    val insideY = y1 >= minY && y2 <= maxY
+
+                    if (insideX && insideY) {
+                        minY = min(minY, y1)
+                        maxY = max(maxY, y2)
+                        cluster.add(other)
+                        iterator.remove()
+                        mergedSomething = true
+                    }
+                }
+            } while (mergedSomething)
+
+            val points = cluster.flatMap {
+                listOf(Point(it.x1.toDouble(), it.y1.toDouble()), Point(it.x2.toDouble(), it.y2.toDouble()))
+            }
+
+            merged.add(fitLineFromPoints(points))
         }
 
         return merged
     }
 
-    fun Line.angle(): Double = Math.toDegrees(atan2((y2 - y1).toDouble(), (x2 - x1).toDouble()))
+    fun mergeHorizontalLinesByRectangleStrict(
+        lines: List<Line>,
+        yTolerance: Int = 20,
+        extendX: Int = 500
+    ): List<Line> {
+        val remaining = lines.toMutableList()
+        val merged = mutableListOf<Line>()
 
-    fun distanceBetweenLines(a: Line, b: Line): Double {
-        val acx = (a.x1 + a.x2) / 2.0
-        val acy = (a.y1 + a.y2) / 2.0
-        val bcx = (b.x1 + b.x2) / 2.0
-        val bcy = (b.y1 + b.y2) / 2.0
-        return hypot(acx - bcx, acy - bcy)
+        while (remaining.isNotEmpty()) {
+            val base = remaining.removeAt(0)
+
+            val baseY = base.centerY()
+            var minX = minOf(base.x1, base.x2) - extendX
+            var maxX = maxOf(base.x1, base.x2) + extendX
+
+            val cluster = mutableListOf(base)
+
+            var mergedSomething: Boolean
+            do {
+                mergedSomething = false
+                val iterator = remaining.iterator()
+
+                while (iterator.hasNext()) {
+                    val other = iterator.next()
+                    val y = other.centerY()
+                    val x1 = minOf(other.x1, other.x2)
+                    val x2 = maxOf(other.x1, other.x2)
+
+                    val insideY = y in (baseY - yTolerance)..(baseY + yTolerance)
+                    val insideX = x1 >= minX && x2 <= maxX
+
+                    if (insideY && insideX) {
+                        minX = min(minX, x1)
+                        maxX = max(maxX, x2)
+                        cluster.add(other)
+                        iterator.remove()
+                        mergedSomething = true
+                    }
+                }
+            } while (mergedSomething)
+
+            val points = cluster.flatMap {
+                listOf(Point(it.x1.toDouble(), it.y1.toDouble()), Point(it.x2.toDouble(), it.y2.toDouble()))
+            }
+
+            merged.add(fitLineFromPoints(points))
+        }
+
+        return merged
     }
 
+    fun fitLineFromPoints(points: List<Point>): Line {
+        val mat = MatOfPoint2f(*points.toTypedArray())
+        val lineParams = Mat()
+        Imgproc.fitLine(mat, lineParams, Imgproc.DIST_L2, 0.0, 0.01, 0.01)
 
-    fun Line.centerX() = (x1 + x2) / 2
-    fun Line.centerY() = (y1 + y2) / 2
+        val vx = lineParams[0, 0]!![0]
+        val vy = lineParams[1, 0]!![0]
+        val x0 = lineParams[2, 0]!![0]
+        val y0 = lineParams[3, 0]!![0]
 
-    fun getBoundaries(values: List<Int>, margin: Double = 0.1): Pair<Int, Int>? {
+        // проекции
+        val projections = points.map { p ->
+            val t = (vx * (p.x - x0) + vy * (p.y - y0)) / (vx * vx + vy * vy)
+            Point(x0 + t * vx, y0 + t * vy)
+        }
+
+        val sorted = projections.sortedBy { it.x + it.y }
+        val p1 = sorted.first()
+        val p2 = sorted.last()
+
+        return Line(p1.x.toInt(), p1.y.toInt(), p2.x.toInt(), p2.y.toInt())
+    }
+
+    fun getBoundaries(values: List<Int>, margin: Double = 0.18): Pair<Int, Int>? {
         if (values.isEmpty()) return null
         val sorted = values.sorted()
         val from = (sorted.size * margin).toInt()
@@ -215,7 +328,12 @@ class ContourDetectorTest {
         return sorted[from] to sorted[to - 1]
     }
 
-    data class Line(val x1: Int, val y1: Int, val x2: Int, val y2: Int)
+    data class Line(val x1: Int, val y1: Int, val x2: Int, val y2: Int) {
+        fun centerX() = (x1 + x2) / 2
+        fun centerY() = (y1 + y2) / 2
+        fun minY(): Int = min(y1, y2)
+        fun maxY(): Int = max(y1, y2)
+    }
 
     fun drawMergedLines(
         size: Size,
