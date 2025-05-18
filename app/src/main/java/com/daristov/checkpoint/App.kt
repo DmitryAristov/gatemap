@@ -1,5 +1,6 @@
 package com.daristov.checkpoint
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -14,9 +15,15 @@ import com.daristov.checkpoint.ui.screens.CheckpointListScreen
 import com.daristov.checkpoint.ui.screens.MainScreen
 import com.daristov.checkpoint.ui.screens.PermissionsScreen
 import com.daristov.checkpoint.ui.screens.SettingsScreen
+import org.opencv.android.OpenCVLoader
 
 @Composable
 fun App() {
+    if (!OpenCVLoader.initDebug())
+        Log.e("OpenCV", "Unable to load OpenCV!");
+    else
+        Log.d("OpenCV", "OpenCV loaded Successfully!");
+
     var permissionsGranted by remember { mutableStateOf(false) }
 
     if (!permissionsGranted) {

@@ -65,10 +65,13 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("com.quickbirdstudios:opencv:4.5.3.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    testImplementation("org.openpnp:opencv:4.5.5-0")
+
 
     val composeBom = platform("androidx.compose:compose-bom:2024.05.00")
     implementation(composeBom)
