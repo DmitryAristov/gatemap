@@ -1,4 +1,4 @@
-package com.daristov.checkpoint.ui.screens
+package com.daristov.checkpoint.screens
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize

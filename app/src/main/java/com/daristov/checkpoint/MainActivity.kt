@@ -8,7 +8,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.daristov.checkpoint.ui.theme.AppTheme
-import com.daristov.checkpoint.viewmodel.SettingsViewModel
+import com.daristov.checkpoint.screens.settings.SettingsViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

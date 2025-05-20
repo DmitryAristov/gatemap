@@ -1,4 +1,4 @@
-package com.daristov.checkpoint.viewmodel
+package com.daristov.checkpoint.screens.settings
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

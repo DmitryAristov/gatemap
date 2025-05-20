@@ -1,4 +1,4 @@
-package com.daristov.checkpoint.ui.screens
+package com.daristov.checkpoint.screens
 
 import android.Manifest
 import android.content.pm.PackageManager

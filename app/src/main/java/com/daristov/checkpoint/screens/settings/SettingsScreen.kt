@@ -1,4 +1,4 @@
-package com.daristov.checkpoint.ui.screens
+package com.daristov.checkpoint.screens.settings
 
 import android.content.Context
 import android.content.Intent
@@ -25,9 +25,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.daristov.checkpoint.viewmodel.AppLanguage
-import com.daristov.checkpoint.viewmodel.AppThemeMode
-import com.daristov.checkpoint.viewmodel.SettingsViewModel
 
 const val iconToTextRatio = 2.5f
 

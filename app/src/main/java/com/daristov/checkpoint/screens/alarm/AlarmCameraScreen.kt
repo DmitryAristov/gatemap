@@ -1,7 +1,5 @@
-package com.daristov.checkpoint.ui.screens
+package com.daristov.checkpoint.screens.alarm
 
-import android.util.Log
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,33 +21,28 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.daristov.checkpoint.ui.components.CameraPreview
-import com.daristov.checkpoint.viewmodel.AlarmViewModel
-import com.daristov.checkpoint.viewmodel.CalibrationStep
-import org.opencv.android.OpenCVLoader
+import com.daristov.checkpoint.ui.components.DrawQuadOverlay
 
 @Composable
 fun AlarmCameraScreen(
     navController: NavHostController, viewModel: AlarmViewModel = viewModel()
 ) {
-    val calibrationStep by viewModel.calibrationStep.collectAsState()
-    val state by viewModel.state.collectAsState()
-    val overlay by viewModel.overlayBitmap.collectAsState()
+    val state by viewModel.uiState.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Камера — на заднем плане
-        CameraPreview(viewModel = viewModel)
-        overlay?.let {
-            Image(
-                bitmap = it.asImageBitmap(),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .align(Alignment.Center)
-            )
+        // Камера
+        CameraPreview(
+            onFrameAnalyzed = { imageProxy ->
+                viewModel.handleImageProxy(imageProxy)
+            }
+        )
+
+        // Если найден контур — рисуем
+        state.lastDetectedBox?.let { box ->
+            DrawQuadOverlay(box = box)
         }
 
         // Нижняя панель поверх камеры с прозрачностью
@@ -69,16 +62,16 @@ fun AlarmCameraScreen(
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                Text(
-                    text = when (calibrationStep) {
-                        CalibrationStep.WAITING_FOR_CAMERA -> "Подключаем камеру..."
-                        CalibrationStep.AUTO_ADJUSTING -> "Автонастройка камеры под освещение..."
-                        CalibrationStep.SEARCHING_CONTOURS -> "Анализ изображения, поиск контуров..."
-                        CalibrationStep.WAITING_USER_CONFIRMATION -> "Подтвердите найденную область. Если не совпадает — укажите вручную."
-                        CalibrationStep.TRACKING -> "Будильник включён. Следим за объектом..."
-                        CalibrationStep.TRIGGERED -> "🚨 Обнаружено движение! Сигнал активирован."
-                    }, style = MaterialTheme.typography.bodyLarge
-                )
+//                Text(
+//                    text = when (calibrationStep) {
+//                        CalibrationStep.WAITING_FOR_CAMERA -> "Подключаем камеру..."
+//                        CalibrationStep.AUTO_ADJUSTING -> "Автонастройка камеры под освещение..."
+//                        CalibrationStep.SEARCHING_CONTOURS -> "Анализ изображения, поиск контуров..."
+//                        CalibrationStep.WAITING_USER_CONFIRMATION -> "Подтвердите найденную область. Если не совпадает — укажите вручную."
+//                        CalibrationStep.TRACKING -> "Будильник включён. Следим за объектом..."
+//                        CalibrationStep.TRIGGERED -> "🚨 Обнаружено движение! Сигнал активирован."
+//                    }, style = MaterialTheme.typography.bodyLarge
+//                )
 
                 Spacer(Modifier.height(8.dp))
 
@@ -86,9 +79,9 @@ fun AlarmCameraScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Button(onClick = { viewModel.recalibrate() }) {
-                        Text("Перекалибровать")
-                    }
+//                    Button(onClick = { viewModel.recalibrate() }) {
+//                        Text("Перекалибровать")
+//                    }
 
                     Button(onClick = { navController.navigate("map") }) {
                         Text("Назад")

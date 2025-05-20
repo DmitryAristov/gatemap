@@ -9,12 +9,12 @@ import androidx.compose.runtime.setValue
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.daristov.checkpoint.ui.screens.AboutScreen
-import com.daristov.checkpoint.ui.screens.AlarmCameraScreen
-import com.daristov.checkpoint.ui.screens.CheckpointListScreen
-import com.daristov.checkpoint.ui.screens.MainScreen
-import com.daristov.checkpoint.ui.screens.PermissionsScreen
-import com.daristov.checkpoint.ui.screens.SettingsScreen
+import com.daristov.checkpoint.screens.AboutScreen
+import com.daristov.checkpoint.screens.alarm.AlarmCameraScreen
+import com.daristov.checkpoint.screens.CheckpointListScreen
+import com.daristov.checkpoint.screens.MainScreen
+import com.daristov.checkpoint.screens.PermissionsScreen
+import com.daristov.checkpoint.screens.settings.SettingsScreen
 import org.opencv.android.OpenCVLoader
 
 @Composable

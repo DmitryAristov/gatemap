@@ -2,103 +2,119 @@ package com.daristov.checkpoint.ui.components
 
 import android.hardware.camera2.CameraMetadata
 import android.hardware.camera2.CaptureRequest
-import android.os.Handler
-import android.os.Looper
-import android.util.Log
+import android.util.Size
 import androidx.annotation.OptIn
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
+import androidx.camera.core.resolutionselector.ResolutionStrategy.FALLBACK_RULE_NONE
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.core.os.postDelayed
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.daristov.checkpoint.viewmodel.AlarmViewModel
-import com.daristov.checkpoint.viewmodel.CalibrationStep
+import java.util.concurrent.Executors
 
 @OptIn(ExperimentalCamera2Interop::class)
 @Composable
-fun CameraPreview(viewModel: AlarmViewModel) {
+fun CameraPreview(
+    modifier: Modifier = Modifier,
+    onFrameAnalyzed: (ImageProxy) -> Unit
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val previewView = remember {
+        PreviewView(context).apply {
+            scaleType = PreviewView.ScaleType.FILL_CENTER
+        }
+    }
 
     AndroidView(
-        factory = { ctx ->
-            val previewView = PreviewView(ctx)
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+        factory = { previewView },
+        modifier = modifier
+    )
 
-            cameraProviderFuture.addListener({
-                val cameraProvider = cameraProviderFuture.get()
-                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+    LaunchedEffect(Unit) {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
 
-                // ===== Настройка автоэкспозиции и автофокуса через Camera2Interop =====
-                val previewBuilder = Preview.Builder()
-                val camera2Ext = Camera2Interop.Extender(previewBuilder)
+        cameraProviderFuture.addListener({
+            val cameraProvider = cameraProviderFuture.get()
 
-                camera2Ext.setCaptureRequestOption(
-                    CaptureRequest.CONTROL_MODE,
-                    CameraMetadata.CONTROL_MODE_AUTO
-                )
-                camera2Ext.setCaptureRequestOption(
-                    CaptureRequest.CONTROL_AF_MODE,
-                    CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
-                )
-                camera2Ext.setCaptureRequestOption(
-                    CaptureRequest.CONTROL_AWB_MODE,
-                    CaptureRequest.CONTROL_AWB_MODE_AUTO
-                )
-                camera2Ext.setCaptureRequestOption(
-                    CaptureRequest.CONTROL_AE_MODE,
-                    CaptureRequest.CONTROL_AE_MODE_ON
-                )
+            // Настройка Preview с Camera2Interop
+            val previewBuilder = Preview.Builder()
+            val camera2Ext = Camera2Interop.Extender(previewBuilder)
 
-                val preview = previewBuilder.build().apply {
+            camera2Ext.setCaptureRequestOption(
+                CaptureRequest.CONTROL_MODE,
+                CameraMetadata.CONTROL_MODE_AUTO
+            )
+            camera2Ext.setCaptureRequestOption(
+                CaptureRequest.CONTROL_AF_MODE,
+                CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_PICTURE
+            )
+            camera2Ext.setCaptureRequestOption(
+                CaptureRequest.CONTROL_AWB_MODE,
+                CameraMetadata.CONTROL_AWB_MODE_AUTO
+            )
+            camera2Ext.setCaptureRequestOption(
+                CaptureRequest.CONTROL_AE_MODE,
+                CameraMetadata.CONTROL_AE_MODE_ON
+            )
+
+            val preview = previewBuilder
+                .setResolutionSelector(
+                    ResolutionSelector.Builder()
+                        .setResolutionStrategy(ResolutionStrategy(Size(1280, 720), FALLBACK_RULE_NONE))
+                        .build()
+                )
+                .build()
+                .apply {
                     setSurfaceProvider(previewView.surfaceProvider)
                 }
 
-                // ===== Анализ изображений =====
-                val analyzer = ImageAnalysis.Builder()
-                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                    .build()
-
-                analyzer.setAnalyzer(
-                    ContextCompat.getMainExecutor(ctx),
-                    ImageAnalysis.Analyzer { imageProxy ->
-                        val bitmap = imageProxy.toBitmap()
-                        if (bitmap != null) {
-                            viewModel.onFrame(bitmap)
-                        }
-                        imageProxy.close()
-                    }
+            val imageAnalysis = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .setResolutionSelector(
+                    ResolutionSelector.Builder()
+                        .setResolutionStrategy(ResolutionStrategy(Size(1280, 720), FALLBACK_RULE_NONE))
+                        .build()
                 )
+                .build()
+                .also {
+                    it.setAnalyzer(
+                        Executors.newSingleThreadExecutor(),
+                        ImageProxyAnalyzer(onFrameAnalyzed)
+                    )
+                }
 
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    lifecycleOwner,
-                    cameraSelector,
-                    preview,
-                    analyzer
-                )
+            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-                // Уведомим ViewModel, что камера готова
-                viewModel.setStep(CalibrationStep.AUTO_ADJUSTING)
-                Handler(Looper.getMainLooper()).postDelayed({
-                    viewModel.setStep(CalibrationStep.SEARCHING_CONTOURS)
-                }, 1500)
-
-            }, ContextCompat.getMainExecutor(ctx))
-
-            previewView
-        },
-        modifier = Modifier.fillMaxSize()
-    )
+            cameraProvider.unbindAll()
+            cameraProvider.bindToLifecycle(
+                lifecycleOwner,
+                cameraSelector,
+                preview,
+                imageAnalysis
+            )
+        }, ContextCompat.getMainExecutor(context))
+    }
 }
 
+class ImageProxyAnalyzer(
+    private val onFrame: (ImageProxy) -> Unit
+) : ImageAnalysis.Analyzer {
+    override fun analyze(image: ImageProxy) {
+        onFrame(image)
+        image.close()
+    }
+}

@@ -71,6 +71,7 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     testImplementation("org.openpnp:opencv:4.5.5-0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3") // или актуальная версия
 
 
     val composeBom = platform("androidx.compose:compose-bom:2024.05.00")

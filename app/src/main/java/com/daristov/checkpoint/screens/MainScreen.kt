@@ -1,4 +1,4 @@
-package com.daristov.checkpoint.ui.screens
+package com.daristov.checkpoint.screens
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding

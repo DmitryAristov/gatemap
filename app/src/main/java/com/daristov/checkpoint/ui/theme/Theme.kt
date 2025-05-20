@@ -3,7 +3,7 @@ package com.daristov.checkpoint.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import com.daristov.checkpoint.viewmodel.AppThemeMode
+import com.daristov.checkpoint.screens.settings.AppThemeMode
 
 private val LightColors = lightColorScheme(
     primary = LightPrimary,
