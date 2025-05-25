@@ -24,19 +24,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.daristov.checkpoint.screens.alarm.AlarmViewModel
 import java.util.concurrent.Executors
 
 @OptIn(ExperimentalCamera2Interop::class)
 @Composable
 fun CameraPreview(
     modifier: Modifier = Modifier,
-    onFrameAnalyzed: (ImageProxy) -> Unit
+    viewModel: AlarmViewModel
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val previewView = remember {
         PreviewView(context).apply {
-            scaleType = PreviewView.ScaleType.FILL_CENTER
+            scaleType = PreviewView.ScaleType.FIT_CENTER
         }
     }
 
@@ -85,7 +86,7 @@ fun CameraPreview(
                 .also {
                     it.setAnalyzer(
                         Executors.newSingleThreadExecutor(),
-                        ImageProxyAnalyzer(onFrameAnalyzed)
+                        viewModel::handleImageProxy
                     )
                 }
 
@@ -99,13 +100,5 @@ fun CameraPreview(
                 imageAnalysis
             )
         }, ContextCompat.getMainExecutor(context))
-    }
-}
-
-class ImageProxyAnalyzer(
-    private val onFrame: (ImageProxy) -> Unit
-) : ImageAnalysis.Analyzer {
-    override fun analyze(image: ImageProxy) {
-        onFrame(image)
     }
 }

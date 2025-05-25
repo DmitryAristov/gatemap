@@ -82,6 +82,7 @@ object VehicleContourDetector {
         val verticalMerged = mergeVerticalLinesByRectangleStrict(verticalFiltered)
         val horizontalMerged = mergeHorizontalLinesByRectangleStrict(horizontalFiltered)
 
+//        return verticalMerged + horizontalMerged
         val quadBox = findTruckQuadFromLines(verticalMerged, horizontalMerged)
         if (quadBox != null) {
             return quadBox

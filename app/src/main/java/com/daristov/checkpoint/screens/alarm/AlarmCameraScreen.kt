@@ -38,19 +38,15 @@ fun AlarmCameraScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Камера
-        CameraPreview(
-            onFrameAnalyzed = { imageProxy ->
-                viewModel.handleImageProxy(imageProxy)
-            }
-        )
+        CameraPreview(viewModel = viewModel)
         val bitmapSize = state.bitmapSize
 
         // Если найден контур — рисуем
-        if (state.lastDetectedBox != null && state.bitmapSize != null) {
+        if (state.lastDetectedBox != null && bitmapSize != null) {
             DrawQuadOverlay(
                 box = state.lastDetectedBox!!,
-                bitmapWidth = state.bitmapSize!!.width.toInt(),
-                bitmapHeight = state.bitmapSize!!.height.toInt()
+                bitmapWidth = bitmapSize.width.toInt(),
+                bitmapHeight = bitmapSize.height.toInt()
             )
         }
 
@@ -113,9 +109,11 @@ fun AlarmCameraScreen(
 }
 
 @Composable
-fun DrawDetectedLines(lines: List<Line>,
-                      bitmapWidth: Int,
-                      bitmapHeight: Int) {
+fun DrawDetectedLines(
+    lines: List<Line>,
+    bitmapWidth: Int,
+    bitmapHeight: Int
+) {
     Canvas(modifier = Modifier.fillMaxSize()) {
         val scaleX = size.width / bitmapWidth
         val scaleY = size.height / bitmapHeight
@@ -123,10 +121,9 @@ fun DrawDetectedLines(lines: List<Line>,
         for (line in lines) {
             drawLine(
                 color = Color.Red,
-                strokeWidth = 16f,
+                strokeWidth = 16f, // ← жирные линии
                 start = Offset(line.x1 * scaleX, line.y1 * scaleY),
-                end = Offset(line.x2 * scaleX, line.y2 * scaleY),
-
+                end = Offset(line.x2 * scaleX, line.y2 * scaleY)
             )
         }
     }

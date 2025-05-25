@@ -13,6 +13,7 @@ object BoxDetector {
         cornerTolerance: Int = 100
     ): QuadBox? {
         val sortedVertical = verticalLines.sortedBy { it.centerX() }
+        val candidates = mutableListOf<QuadBox>()
 
         for (i in sortedVertical.indices) {
             for (j in sortedVertical.lastIndex downTo i + 1) {
@@ -46,17 +47,23 @@ object BoxDetector {
                             right.y1.toDouble()
                         ) else Point(right.x2.toDouble(), right.y2.toDouble())
 
-                        return QuadBox(
+                        val box = QuadBox(
                             topLeft = leftTop,
                             topRight = rightTop,
                             bottomRight = rightBottom,
                             bottomLeft = leftBottom
                         )
+                        candidates.add(box)
                     }
                 }
             }
         }
+        return candidates.maxByOrNull { boxArea(it) }
+    }
 
-        return null
+    fun boxArea(box: QuadBox): Double {
+        val width = box.topRight.x - box.topLeft.x
+        val height = box.bottomLeft.y - box.topLeft.y
+        return abs(width * height)
     }
 }

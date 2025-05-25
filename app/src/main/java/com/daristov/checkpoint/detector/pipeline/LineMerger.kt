@@ -12,8 +12,8 @@ object LineMerger {
 
     fun mergeVerticalLinesByRectangleStrict(
         lines: List<Line>,
-        xTolerance: Int = 20,
-        extendY: Int = 500
+        xTolerance: Int = 10,
+        extendY: Int = 1000
     ): List<Line> {
         val remaining = lines.toMutableList()
         val merged = mutableListOf<Line>()
@@ -63,8 +63,8 @@ object LineMerger {
 
     fun mergeHorizontalLinesByRectangleStrict(
         lines: List<Line>,
-        yTolerance: Int = 20,
-        extendX: Int = 500
+        yTolerance: Int = 10,
+        extendX: Int = 1000
     ): List<Line> {
         val remaining = lines.toMutableList()
         val merged = mutableListOf<Line>()
