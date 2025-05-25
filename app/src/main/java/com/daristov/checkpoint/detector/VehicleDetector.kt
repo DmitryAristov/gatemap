@@ -3,6 +3,7 @@ package com.daristov.checkpoint.detector
 import android.graphics.Bitmap
 import com.daristov.checkpoint.domain.model.QuadBox
 import com.daristov.checkpoint.detector.pipeline.VehicleContourDetector.findVehicleContourByLines
+import com.daristov.checkpoint.domain.model.Line
 import org.opencv.android.Utils
 import org.opencv.core.Mat
 import org.opencv.imgproc.Imgproc

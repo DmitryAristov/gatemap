@@ -3,9 +3,11 @@ package com.daristov.checkpoint.util
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
+import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.YuvImage
 import androidx.camera.core.ImageProxy
+import androidx.camera.core.impl.utils.MatrixExt.postRotate
 import java.io.ByteArrayOutputStream
 
 object ImageProxyUtils {
@@ -21,9 +23,7 @@ object ImageProxyUtils {
 
         val nv21 = ByteArray(ySize + uSize + vSize)
 
-        // Y
         yBuffer.get(nv21, 0, ySize)
-        // VU (ImageProxy в формате YUV_420_888 с VU-порядком)
         vBuffer.get(nv21, ySize, vSize)
         uBuffer.get(nv21, ySize + vSize, uSize)
 
@@ -32,6 +32,20 @@ object ImageProxyUtils {
         yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 100, out)
         val jpegBytes = out.toByteArray()
 
-        return BitmapFactory.decodeByteArray(jpegBytes, 0, jpegBytes.size)
+        val bitmap = BitmapFactory.decodeByteArray(jpegBytes, 0, jpegBytes.size)
+
+        return rotateBitmap(bitmap, image.imageInfo.rotationDegrees)
+    }
+
+    fun rotateBitmap(bitmap: Bitmap, rotationDegrees: Int): Bitmap {
+        if (rotationDegrees == 0) return bitmap
+
+        val matrix = Matrix().apply {
+            postRotate(rotationDegrees.toFloat())
+        }
+
+        return Bitmap.createBitmap(
+            bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
+        )
     }
 }

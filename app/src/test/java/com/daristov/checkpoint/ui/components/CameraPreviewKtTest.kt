@@ -19,7 +19,7 @@ class ContourDetectorTest {
 
     @Test
     fun testContoursFromFileMat() {
-        val inputMat = Imgcodecs.imread("src/test/resources/sample2.jpg")
+        val inputMat = Imgcodecs.imread("src/test/resources/sample1.jpg")
         assertFalse("Изображение не загружено", inputMat.empty())
         val debugOutputDir: File = File("src/test/resources")
 

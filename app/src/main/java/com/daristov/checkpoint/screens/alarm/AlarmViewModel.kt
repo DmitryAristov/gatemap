@@ -1,6 +1,8 @@
 package com.daristov.checkpoint.screens.alarm
 
+import android.content.Context
 import android.graphics.Bitmap
+import android.util.Size
 import androidx.camera.core.ImageProxy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -19,10 +21,17 @@ class AlarmViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(AlarmUiState())
     val uiState: StateFlow<AlarmUiState> = _uiState
 
+
     fun handleImageProxy(imageProxy: ImageProxy) {
-        val bitmap = ImageProxyUtils.toBitmap(imageProxy)
-        imageProxy.close()
-        analyzeFrame(bitmap)
+        try {
+            val bitmap = ImageProxyUtils.toBitmap(imageProxy)
+            _uiState.update {
+                it.copy(bitmapSize = Size(bitmap.width, bitmap.height))
+            }
+            analyzeFrame(bitmap)
+        } finally {
+            imageProxy.close() // закрываем строго после обработки
+        }
     }
 
     fun analyzeFrame(bitmap: Bitmap) {

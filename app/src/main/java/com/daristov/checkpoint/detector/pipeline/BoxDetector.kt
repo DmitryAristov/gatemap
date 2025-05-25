@@ -10,7 +10,7 @@ object BoxDetector {
     fun findTruckQuadFromLines(
         verticalLines: List<Line>,
         horizontalLines: List<Line>,
-        cornerTolerance: Int = 50
+        cornerTolerance: Int = 100
     ): QuadBox? {
         val sortedVertical = verticalLines.sortedBy { it.centerX() }
 

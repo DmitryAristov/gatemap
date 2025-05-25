@@ -1,5 +1,6 @@
 package com.daristov.checkpoint.screens.alarm
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,9 +21,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.daristov.checkpoint.domain.model.Line
 import com.daristov.checkpoint.ui.components.CameraPreview
 import com.daristov.checkpoint.ui.components.DrawQuadOverlay
 
@@ -39,10 +43,23 @@ fun AlarmCameraScreen(
                 viewModel.handleImageProxy(imageProxy)
             }
         )
+        val bitmapSize = state.bitmapSize
 
         // Если найден контур — рисуем
-        state.lastDetectedBox?.let { box ->
-            DrawQuadOverlay(box = box)
+        if (state.lastDetectedBox != null && state.bitmapSize != null) {
+            DrawQuadOverlay(
+                box = state.lastDetectedBox!!,
+                bitmapWidth = state.bitmapSize!!.width.toInt(),
+                bitmapHeight = state.bitmapSize!!.height.toInt()
+            )
+        }
+
+        if (state.detectedLines.isNotEmpty() && bitmapSize != null) {
+            DrawDetectedLines(
+                lines = state.detectedLines,
+                bitmapWidth = bitmapSize.width.toInt(),
+                bitmapHeight = bitmapSize.height.toInt()
+            )
         }
 
         // Нижняя панель поверх камеры с прозрачностью
@@ -79,10 +96,6 @@ fun AlarmCameraScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-//                    Button(onClick = { viewModel.recalibrate() }) {
-//                        Text("Перекалибровать")
-//                    }
-
                     Button(onClick = { navController.navigate("map") }) {
                         Text("Назад")
                     }
@@ -95,6 +108,26 @@ fun AlarmCameraScreen(
                     style = MaterialTheme.typography.titleMedium
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun DrawDetectedLines(lines: List<Line>,
+                      bitmapWidth: Int,
+                      bitmapHeight: Int) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val scaleX = size.width / bitmapWidth
+        val scaleY = size.height / bitmapHeight
+
+        for (line in lines) {
+            drawLine(
+                color = Color.Red,
+                strokeWidth = 16f,
+                start = Offset(line.x1 * scaleX, line.y1 * scaleY),
+                end = Offset(line.x2 * scaleX, line.y2 * scaleY),
+
+            )
         }
     }
 }

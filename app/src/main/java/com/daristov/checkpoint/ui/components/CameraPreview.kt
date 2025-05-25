@@ -15,6 +15,7 @@ import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.core.resolutionselector.ResolutionStrategy.FALLBACK_RULE_NONE
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.camera.view.PreviewView.ScaleType.FIT_CENTER
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -72,23 +73,14 @@ fun CameraPreview(
             )
 
             val preview = previewBuilder
-                .setResolutionSelector(
-                    ResolutionSelector.Builder()
-                        .setResolutionStrategy(ResolutionStrategy(Size(1280, 720), FALLBACK_RULE_NONE))
-                        .build()
-                )
                 .build()
                 .apply {
-                    setSurfaceProvider(previewView.surfaceProvider)
+                    previewView.scaleType = FIT_CENTER
+                    surfaceProvider = previewView.surfaceProvider
                 }
 
             val imageAnalysis = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .setResolutionSelector(
-                    ResolutionSelector.Builder()
-                        .setResolutionStrategy(ResolutionStrategy(Size(1280, 720), FALLBACK_RULE_NONE))
-                        .build()
-                )
                 .build()
                 .also {
                     it.setAnalyzer(
@@ -115,6 +107,5 @@ class ImageProxyAnalyzer(
 ) : ImageAnalysis.Analyzer {
     override fun analyze(image: ImageProxy) {
         onFrame(image)
-        image.close()
     }
 }
