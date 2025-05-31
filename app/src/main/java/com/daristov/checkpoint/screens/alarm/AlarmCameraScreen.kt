@@ -1,6 +1,5 @@
 package com.daristov.checkpoint.screens.alarm
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,14 +20,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.daristov.checkpoint.domain.model.Line
 import com.daristov.checkpoint.ui.components.CameraPreview
-import com.daristov.checkpoint.ui.components.DrawQuadOverlay
+import com.daristov.checkpoint.ui.components.DrawRearLightsOverlay
 
 @Composable
 fun AlarmCameraScreen(
@@ -41,18 +37,10 @@ fun AlarmCameraScreen(
         CameraPreview(viewModel = viewModel)
         val bitmapSize = state.bitmapSize
 
-        // Если найден контур — рисуем
-        if (state.lastDetectedBox != null && bitmapSize != null) {
-            DrawQuadOverlay(
-                box = state.lastDetectedBox!!,
-                bitmapWidth = bitmapSize.width.toInt(),
-                bitmapHeight = bitmapSize.height.toInt()
-            )
-        }
-
-        if (state.detectedLines.isNotEmpty() && bitmapSize != null) {
-            DrawDetectedLines(
-                lines = state.detectedLines,
+        // Если найдены фонари — рисуем
+        if (state.lastDetectedRearLights.isNotEmpty() && bitmapSize != null) {
+            DrawRearLightsOverlay(
+                rects = state.lastDetectedRearLights,
                 bitmapWidth = bitmapSize.width.toInt(),
                 bitmapHeight = bitmapSize.height.toInt()
             )
@@ -104,27 +92,6 @@ fun AlarmCameraScreen(
                     style = MaterialTheme.typography.titleMedium
                 )
             }
-        }
-    }
-}
-
-@Composable
-fun DrawDetectedLines(
-    lines: List<Line>,
-    bitmapWidth: Int,
-    bitmapHeight: Int
-) {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val scaleX = size.width / bitmapWidth
-        val scaleY = size.height / bitmapHeight
-
-        for (line in lines) {
-            drawLine(
-                color = Color.Red,
-                strokeWidth = 16f, // ← жирные линии
-                start = Offset(line.x1 * scaleX, line.y1 * scaleY),
-                end = Offset(line.x2 * scaleX, line.y2 * scaleY)
-            )
         }
     }
 }

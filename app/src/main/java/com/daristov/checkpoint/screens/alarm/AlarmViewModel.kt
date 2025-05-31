@@ -8,7 +8,6 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import com.daristov.checkpoint.detector.VehicleDetector
-import com.daristov.checkpoint.detector.tracking.VehicleTracker
 import com.daristov.checkpoint.util.ImageProxyUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.update
@@ -18,7 +17,6 @@ class AlarmViewModel : ViewModel() {
 
     private val vehicleDetector: VehicleDetector = VehicleDetector()
     private val _uiState = MutableStateFlow(AlarmUiState())
-    private val vehicleTracker = VehicleTracker()
     val uiState: StateFlow<AlarmUiState> = _uiState
 
     fun handleImageProxy(imageProxy: ImageProxy) {
@@ -32,31 +30,12 @@ class AlarmViewModel : ViewModel() {
 
     fun analyzeFrame(bitmap: Bitmap) {
         viewModelScope.launch(Dispatchers.Default) {
-            val box = vehicleDetector.process(bitmap)
-            if (box != null) {
-//                _uiState.update {
-//                    it.copy(
-//                        detectedLines = box,
-//                        isImageStable = true
-//                    )
-//                }
-
-                val isStable = vehicleTracker.update(box)
-
-                if (isStable) {
-                    _uiState.update {
-                        it.copy(
-                            lastDetectedBox = vehicleTracker.currentStableBox,
-                            isImageStable = true
-                        )
-                    }
-                } else {
-                    _uiState.update {
-                        it.copy(
-                            lastDetectedBox = null,
-                            isImageStable = false
-                        )
-                    }
+            val rearLights = vehicleDetector.process(bitmap)
+            if (rearLights.isNotEmpty()) {
+                _uiState.update {
+                    it.copy(
+                        lastDetectedRearLights = rearLights,
+                    )
                 }
             }
         }
