@@ -29,7 +29,7 @@ fun AboutScreen(navController: NavHostController) {
     }) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             Text("Версия: 1.0.0", modifier = Modifier.align(Alignment.CenterHorizontally))
-            Text("Автор: ...", modifier = Modifier.align(Alignment.CenterHorizontally))
+            Text("Автор: https://github.com/DmitryAristov", modifier = Modifier.align(Alignment.CenterHorizontally))
         }
     }
 }

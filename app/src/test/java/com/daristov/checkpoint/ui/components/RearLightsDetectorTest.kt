@@ -1,6 +1,6 @@
 package com.daristov.checkpoint.ui.components
 
-import com.daristov.checkpoint.detector.pipeline.RearLightsDetector
+import com.daristov.checkpoint.detector.RearLightsDetector
 import org.junit.Assert.assertFalse
 import org.junit.Test
 import org.opencv.core.Core
@@ -12,10 +12,10 @@ import java.io.File
 
 class RearLightsDetectorTest {
 
+    val debugOutputDir = File("src/test/resources")
     init {
         nu.pattern.OpenCV.loadLocally()
     }
-    val debugOutputDir = File("src/test/resources")
 
     @Test
     fun extractRedMaskTest() {

@@ -1,7 +1,7 @@
 package com.daristov.checkpoint.detector
 
 import android.graphics.Bitmap
-import com.daristov.checkpoint.detector.pipeline.RearLightsDetector
+import com.daristov.checkpoint.detector.RearLightsDetector
 import org.opencv.android.Utils
 import org.opencv.core.Mat
 import org.opencv.core.Rect

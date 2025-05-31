@@ -1,4 +1,4 @@
-package com.daristov.checkpoint.detector.pipeline
+package com.daristov.checkpoint.detector
 
 import org.opencv.core.Core
 import org.opencv.core.Mat
@@ -7,6 +7,7 @@ import org.opencv.core.Rect
 import org.opencv.core.Scalar
 import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
+import kotlin.math.abs
 
 object RearLightsDetector {
 
@@ -57,12 +58,13 @@ object RearLightsDetector {
     }
 
     fun filterRedLightCandidates(contours: List<MatOfPoint>, imageSize: Size): List<Rect> {
-        val minArea = 500        // минимальная площадь прямоугольника
+        val minArea = 200        // минимальная площадь прямоугольника
+        val maxArea = 4000       // максимальная площадь прямоугольника
         val maxDeltaY = 50       // максимально допустимая разница по вертикали между фарами
 
         val allRects = contours
             .map { Imgproc.boundingRect(it) }
-            .filter { it.width * it.height > minArea }
+            .filter { it.width * it.height > minArea && it.width * it.height < maxArea }
             .sortedByDescending { it.y + it.height / 2 } // снизу вверх
 
         for ((index, current) in allRects.withIndex()) {
@@ -82,7 +84,7 @@ object RearLightsDetector {
                 else
                     otherCenterX < imageSize.width / 2
 
-                if (isOppositeSide && kotlin.math.abs(centerY - otherCenterY) <= maxDeltaY) {
+                if (isOppositeSide && abs(centerY - otherCenterY) <= maxDeltaY) {
                     return if (isLeft) listOf(current, other) else listOf(other, current)
                 }
             }
@@ -99,4 +101,3 @@ object RearLightsDetector {
         }
     }
 }
-
