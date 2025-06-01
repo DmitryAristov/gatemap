@@ -13,13 +13,14 @@ import java.io.File
 class RearLightsDetectorTest {
 
     val debugOutputDir = File("src/test/resources")
+    val inputMatPath = "src/test/resources/sample3_night.jpg"
     init {
         nu.pattern.OpenCV.loadLocally()
     }
 
     @Test
     fun extractRedMaskTest() {
-        val inputMat = Imgcodecs.imread("src/test/resources/sample2.jpg")
+        val inputMat = Imgcodecs.imread(inputMatPath)
         assertFalse("Изображение не загружено", inputMat.empty())
         val redMask = RearLightsDetector.extractRedMask(inputMat)
 
@@ -31,7 +32,7 @@ class RearLightsDetectorTest {
 
     @Test
     fun filterMaskTest() {
-        val inputMat = Imgcodecs.imread("src/test/resources/sample2.jpg")
+        val inputMat = Imgcodecs.imread(inputMatPath)
         assertFalse("Изображение не загружено", inputMat.empty())
 
         val redMask = RearLightsDetector.extractRedMask(inputMat)
@@ -45,7 +46,7 @@ class RearLightsDetectorTest {
 
     @Test
     fun findContoursTest() {
-        val inputMat = Imgcodecs.imread("src/test/resources/sample2.jpg")
+        val inputMat = Imgcodecs.imread(inputMatPath)
         assertFalse("Изображение не загружено", inputMat.empty())
 
         val redMask = RearLightsDetector.extractRedMask(inputMat)
@@ -63,15 +64,18 @@ class RearLightsDetectorTest {
 
     @Test
     fun filterRedLightCandidatesTest() {
-        val inputMat = Imgcodecs.imread("src/test/resources/sample2.jpg")
+        val inputMat = Imgcodecs.imread(inputMatPath)
         assertFalse("Изображение не загружено", inputMat.empty())
         val redMask = RearLightsDetector.extractRedMask(inputMat)
         val cleanedMask = RearLightsDetector.filterMask(redMask)
         val contours = RearLightsDetector.findContours(cleanedMask)
-        val candidates = RearLightsDetector.filterRedLightCandidates(contours, inputMat.size())
-        RearLightsDetector.drawCandidateRects(inputMat, candidates)
+        val rearLightPair = RearLightsDetector.filterRedLightCandidates(contours, inputMat.size())
+        if (rearLightPair != null) {
+            Imgproc.rectangle(inputMat, rearLightPair.left.tl(), rearLightPair.left.br(), Scalar(0.0, 255.0, 0.0), 6)
+            Imgproc.rectangle(inputMat, rearLightPair.right.tl(), rearLightPair.right.br(), Scalar(0.0, 255.0, 0.0), 6)
+        } else
+            assertFalse("Не удалось найти фонари", true)
 
         Imgcodecs.imwrite(File(debugOutputDir, "sample2_3_filterRedLightCandidates.png").absolutePath, inputMat)
     }
-
 }

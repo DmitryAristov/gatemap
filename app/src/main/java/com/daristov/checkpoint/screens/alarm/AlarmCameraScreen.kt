@@ -36,11 +36,12 @@ fun AlarmCameraScreen(
         // Камера
         CameraPreview(viewModel = viewModel)
         val bitmapSize = state.bitmapSize
+        val rearLights = state.lastDetectedRearLights
 
         // Если найдены фонари — рисуем
-        if (state.lastDetectedRearLights.isNotEmpty() && bitmapSize != null) {
+        if (rearLights != null && bitmapSize != null) {
             DrawRearLightsOverlay(
-                rects = state.lastDetectedRearLights,
+                rects = rearLights,
                 bitmapWidth = bitmapSize.width.toInt(),
                 bitmapHeight = bitmapSize.height.toInt()
             )
@@ -63,6 +64,17 @@ fun AlarmCameraScreen(
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
+                Text(text = "Pitch: %.1f".format(state.pitch))
+                Spacer(Modifier.height(8.dp))
+
+                Text(text = "Roll: %.1f".format(state.roll))
+                Spacer(Modifier.height(8.dp))
+
+                if (state.motionDetected) {
+                    Text(text = "🚨 Обнаружено движение!")
+                } else {
+                    Text(text = "")
+                }
 //                Text(
 //                    text = when (calibrationStep) {
 //                        CalibrationStep.WAITING_FOR_CAMERA -> "Подключаем камеру..."

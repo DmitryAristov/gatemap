@@ -10,6 +10,11 @@ import org.opencv.imgproc.Imgproc
 import kotlin.math.abs
 
 object RearLightsDetector {
+    data class RearLightPair(val left: Rect, val right: Rect)
+
+    private const val minArea = 200    // минимальная площадь прямоугольника
+    private const val maxArea = 4000   // максимальная площадь прямоугольника
+    private const val maxDeltaY = 50   // максимально допустимая разница по вертикали между фарами
 
     // 1. Перевод изображения в HSV и маска по красному цвету
     fun extractRedMask(input: Mat): Mat {
@@ -57,14 +62,11 @@ object RearLightsDetector {
         return contours
     }
 
-    fun filterRedLightCandidates(contours: List<MatOfPoint>, imageSize: Size): List<Rect> {
-        val minArea = 200        // минимальная площадь прямоугольника
-        val maxArea = 4000       // максимальная площадь прямоугольника
-        val maxDeltaY = 50       // максимально допустимая разница по вертикали между фарами
-
+    fun filterRedLightCandidates(contours: List<MatOfPoint>, imageSize: Size): RearLightPair? {
         val allRects = contours
             .map { Imgproc.boundingRect(it) }
-            .filter { it.width * it.height > minArea && it.width * it.height < maxArea }
+            .filter { it.width * it.height > minArea }
+//            .filter { it.width * it.height < maxArea }
             .sortedByDescending { it.y + it.height / 2 } // снизу вверх
 
         for ((index, current) in allRects.withIndex()) {
@@ -85,19 +87,10 @@ object RearLightsDetector {
                     otherCenterX < imageSize.width / 2
 
                 if (isOppositeSide && abs(centerY - otherCenterY) <= maxDeltaY) {
-                    return if (isLeft) listOf(current, other) else listOf(other, current)
+                    return if (isLeft) RearLightPair(current, other) else RearLightPair(other, current)
                 }
             }
         }
-
-        return emptyList()
-    }
-
-
-    // 5. Визуализация результатов (опционально)
-    fun drawCandidateRects(image: Mat, candidates: List<Rect>) {
-        for (rect in candidates) {
-            Imgproc.rectangle(image, rect.tl(), rect.br(), Scalar(0.0, 255.0, 0.0), 2)
-        }
+        return null
     }
 }

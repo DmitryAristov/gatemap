@@ -2,21 +2,17 @@ package com.daristov.checkpoint.ui.components
 
 import android.hardware.camera2.CameraMetadata
 import android.hardware.camera2.CaptureRequest
-import android.util.Size
 import androidx.annotation.OptIn
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
-import androidx.camera.core.resolutionselector.ResolutionSelector
-import androidx.camera.core.resolutionselector.ResolutionStrategy
-import androidx.camera.core.resolutionselector.ResolutionStrategy.FALLBACK_RULE_NONE
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.camera.view.PreviewView.ScaleType.FIT_CENTER
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -100,5 +96,12 @@ fun CameraPreview(
                 imageAnalysis
             )
         }, ContextCompat.getMainExecutor(context))
+    }
+
+    DisposableEffect(Unit) {
+        viewModel.startOrientationTracking()
+        onDispose {
+            viewModel.stopOrientationTracking()
+        }
     }
 }

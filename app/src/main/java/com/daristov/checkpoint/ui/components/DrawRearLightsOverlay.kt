@@ -6,14 +6,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import com.daristov.checkpoint.detector.RearLightsDetector
 import org.opencv.core.Rect
 
 @Composable
 fun DrawRearLightsOverlay(
-    rects: List<Rect>,
+    rects: RearLightsDetector.RearLightPair,
     bitmapWidth: Int,
     bitmapHeight: Int,
-    color: Color = Color.Red,
+    color: Color = Color.Green,
     strokeWidth: Float = 12f
 ) {
     Canvas(modifier = Modifier.fillMaxSize()) {
@@ -28,7 +29,7 @@ fun DrawRearLightsOverlay(
         val offsetX = (size.width - scaledWidth) / 2f
         val offsetY = (size.height - scaledHeight) / 2f
 
-        for (rect in rects) {
+        for (rect in listOf(rects.left, rects.right)) {
             val left = rect.x * scale + offsetX
             val top = rect.y * scale + offsetY
             val right = (rect.x + rect.width) * scale + offsetX
