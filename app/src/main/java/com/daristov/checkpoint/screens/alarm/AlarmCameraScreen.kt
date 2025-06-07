@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.daristov.checkpoint.ui.components.CameraPreview
 import com.daristov.checkpoint.ui.components.DrawRearLightsOverlay
-import com.daristov.checkpoint.ui.components.SettingsPreferenceManager
+import com.daristov.checkpoint.screens.settings.SettingsPreferenceManager
 
 @Composable
 fun AlarmCameraScreen(

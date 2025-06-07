@@ -7,7 +7,6 @@ import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.daristov.checkpoint.ui.components.SettingsPreferenceManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -18,13 +17,17 @@ enum class AppLanguage { RU, KZ, EN }
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val pref = SettingsPreferenceManager(application.applicationContext)
     private val _themeMode = MutableStateFlow(AppThemeMode.SYSTEM)
-    private val _sensitivity = MutableStateFlow(70)
+    private val _shrinkSensitivity = MutableStateFlow(100)
+    private val _riseSensitivity = MutableStateFlow(100)
+    private val _stableTrajectorySensitivity = MutableStateFlow(100)
     private val _language = MutableStateFlow(AppLanguage.RU)
 
     val themeMode: StateFlow<AppThemeMode> = _themeMode
     var selectedAlarmUri by mutableStateOf<Uri?>(null)
         private set
-    val sensitivity: StateFlow<Int> = _sensitivity
+    val shrinkSensitivity: StateFlow<Int> = _shrinkSensitivity
+    val riseSensitivity: StateFlow<Int> = _riseSensitivity
+    val stableTrajectorySensitivity: StateFlow<Int> = _stableTrajectorySensitivity
     val language: StateFlow<AppLanguage> = _language
 
     init {
@@ -37,7 +40,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
 
         viewModelScope.launch {
-            pref.getDetectionSensitivity().collect { _sensitivity.value = it }
+            pref.getRiseSensitivity().collect { _riseSensitivity.value = it }
+        }
+
+        viewModelScope.launch {
+            pref.getShrinkSensitivity().collect { _shrinkSensitivity.value = it }
+        }
+
+        viewModelScope.launch {
+            pref.getStableTrajectoryRatio().collect { _stableTrajectorySensitivity.value = it }
         }
 
         viewModelScope.launch {
@@ -60,11 +71,20 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun changeSensitivity(value: Int) {
-        _sensitivity.value = value
-        viewModelScope.launch { pref.setDetectionSensitivity(value) }
+    fun changeShrinkSensitivity(value: Int) {
+        _shrinkSensitivity.value = value
+        viewModelScope.launch { pref.setShrinkSensitivity(value) }
     }
 
+    fun changeRiseSensitivity(value: Int) {
+        _riseSensitivity.value = value
+        viewModelScope.launch { pref.setRiseSensitivity(value) }
+    }
+
+    fun changeStableTrajectoryRatio(value: Int) {
+        _stableTrajectorySensitivity.value = value
+        viewModelScope.launch { pref.setStableTrajectoryRatio(value) }
+    }
 }
 
 

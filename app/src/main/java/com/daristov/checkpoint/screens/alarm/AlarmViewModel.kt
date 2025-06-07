@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import com.daristov.checkpoint.detector.VehicleDetector
 import com.daristov.checkpoint.sensor.OrientationProvider
-import com.daristov.checkpoint.ui.components.SettingsPreferenceManager
+import com.daristov.checkpoint.screens.settings.SettingsPreferenceManager
 import com.daristov.checkpoint.util.ImageProxyUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.update
@@ -28,17 +28,21 @@ class AlarmViewModel(
 
     private val vehicleDetector = VehicleDetector()
     private val orientationProvider = OrientationProvider(application.applicationContext)
-    private var sensitivity = 0.7  // по умолчанию 70%
-    private val motionDetector = RearLightsMotionDetector(sensitivityThreshold = sensitivity)
+    private val motionDetector = RearLightsMotionDetector()
 
     private val _uiState = MutableStateFlow(AlarmUiState())
     val uiState: StateFlow<AlarmUiState> = _uiState
 
     init {
         viewModelScope.launch {
-            settingsManager.getDetectionSensitivity().collect {
-                sensitivity = it * 0.01
-                motionDetector.setSensitivity(sensitivity)
+            settingsManager.getRiseSensitivity().collect {
+                motionDetector.setRiseSensitivity(it * 0.01)
+            }
+            settingsManager.getShrinkSensitivity().collect {
+                motionDetector.setShrinkSensitivity(it * 0.01)
+            }
+            settingsManager.getStableTrajectoryRatio().collect {
+                motionDetector.setStableTrajectoryRatio(it * 0.01)
             }
         }
     }

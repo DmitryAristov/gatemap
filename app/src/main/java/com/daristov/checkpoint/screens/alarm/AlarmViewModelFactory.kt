@@ -3,7 +3,7 @@ package com.daristov.checkpoint.screens.alarm
 import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.daristov.checkpoint.ui.components.SettingsPreferenceManager
+import com.daristov.checkpoint.screens.settings.SettingsPreferenceManager
 
 class AlarmViewModelFactory(
     private val application: Application,

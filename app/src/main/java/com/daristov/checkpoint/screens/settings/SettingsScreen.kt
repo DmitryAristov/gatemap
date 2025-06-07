@@ -53,7 +53,13 @@ fun SettingsScreen(navController: NavHostController, viewModel: SettingsViewMode
         ThemeSelector(viewModel)
 
         HorizontalDivider(Modifier.padding(vertical = 3.dp))
-        SensitivitySlider(viewModel)
+        RiseSensitivitySlider(viewModel)
+
+        HorizontalDivider(Modifier.padding(vertical = 3.dp))
+        ShrinkSensitivitySlider(viewModel)
+
+        HorizontalDivider(Modifier.padding(vertical = 3.dp))
+        StableTrajectorySensitivitySlider(viewModel)
 
         HorizontalDivider(Modifier.padding(vertical = 3.dp))
         RingtonePicker(
@@ -131,18 +137,70 @@ fun RingtonePicker(context: Context, selectedAlarmUri: Uri?, onPicked: (Uri) -> 
 }
 
 @Composable
-fun SensitivitySlider(viewModel: SettingsViewModel) {
-    val sensitivity by viewModel.sensitivity.collectAsState()
+fun RiseSensitivitySlider(viewModel: SettingsViewModel) {
+    val sensitivity by viewModel.riseSensitivity.collectAsState()
 
     Column(modifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = 16.dp, vertical = 12.dp)) {
 
-        Text("Чувствительность детекции", style = MaterialTheme.typography.titleMedium)
+        Text("Чувствительность движения вверх", style = MaterialTheme.typography.titleMedium)
 
         Slider(
             value = sensitivity.toFloat(),
-            onValueChange = { viewModel.changeSensitivity(it.toInt()) },
+            onValueChange = { viewModel.changeRiseSensitivity(it.toInt()) },
+            valueRange = 0f..100f
+        )
+
+        val label = when {
+            sensitivity < 35 -> "Низкая"
+            sensitivity < 70 -> "Средняя"
+            else -> "Высокая"
+        }
+
+        Text("Текущий уровень: $sensitivity ($label)")
+    }
+}
+
+@Composable
+fun ShrinkSensitivitySlider(viewModel: SettingsViewModel) {
+    val sensitivity by viewModel.shrinkSensitivity.collectAsState()
+
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 12.dp)) {
+
+        Text("Чувствительность уменьшения фонарей", style = MaterialTheme.typography.titleMedium)
+
+        Slider(
+            value = sensitivity.toFloat(),
+            onValueChange = { viewModel.changeShrinkSensitivity(it.toInt()) },
+            valueRange = 0f..100f
+        )
+
+        val label = when {
+            sensitivity < 35 -> "Низкая"
+            sensitivity < 70 -> "Средняя"
+            else -> "Высокая"
+        }
+
+        Text("Текущий уровень: $sensitivity ($label)")
+    }
+}
+
+@Composable
+fun StableTrajectorySensitivitySlider(viewModel: SettingsViewModel) {
+    val sensitivity by viewModel.stableTrajectorySensitivity.collectAsState()
+
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 12.dp)) {
+
+        Text("Чувствительность стабильности траектории", style = MaterialTheme.typography.titleMedium)
+
+        Slider(
+            value = sensitivity.toFloat(),
+            onValueChange = { viewModel.changeStableTrajectoryRatio(it.toInt()) },
             valueRange = 0f..100f
         )
 
