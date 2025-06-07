@@ -12,34 +12,55 @@ import kotlin.math.abs
 object RearLightsDetector {
     data class RearLightPair(val left: Rect, val right: Rect)
 
-    private const val minArea = 200    // минимальная площадь прямоугольника
-    private const val maxArea = 4000   // максимальная площадь прямоугольника
-    private const val maxDeltaY = 50   // максимально допустимая разница по вертикали между фарами
+    private const val minArea = 200
+    private const val maxDeltaY = 50
 
-    // 1. Перевод изображения в HSV и маска по красному цвету
+    // Основная функция получения маски
     fun extractRedMask(input: Mat): Mat {
         val hsv = Mat()
         Imgproc.cvtColor(input, hsv, Imgproc.COLOR_BGR2HSV)
+        val isNight = isNightImage(hsv)
+        return if (isNight) extractBrightRedMask(hsv) else extractRedMaskDay(hsv)
+    }
 
-        val lowerRed1 = Scalar(0.0, 100.0, 100.0)
-        val upperRed1 = Scalar(10.0, 255.0, 255.0)
+    private fun extractRedMaskDay(hsv: Mat): Mat {
+        val lower1 = Scalar(0.0, 100.0, 100.0)
+        val upper1 = Scalar(10.0, 255.0, 255.0)
+        val lower2 = Scalar(160.0, 100.0, 100.0)
+        val upper2 = Scalar(180.0, 255.0, 255.0)
+        return combineRedMasks(hsv, lower1, upper1, lower2, upper2)
+    }
 
-        val lowerRed2 = Scalar(160.0, 100.0, 100.0)
-        val upperRed2 = Scalar(180.0, 255.0, 255.0)
+    private fun extractBrightRedMask(hsv: Mat): Mat {
+        val lower1 = Scalar(0.0, 50.0, 200.0)
+        val upper1 = Scalar(10.0, 255.0, 255.0)
+        val lower2 = Scalar(160.0, 50.0, 200.0)
+        val upper2 = Scalar(180.0, 255.0, 255.0)
+        val redMask = combineRedMasks(hsv, lower1, upper1, lower2, upper2)
 
-        val mask1 = Mat()
-        val mask2 = Mat()
-
-        Core.inRange(hsv, lowerRed1, upperRed1, mask1)
-        Core.inRange(hsv, lowerRed2, upperRed2, mask2)
-
-        val redMask = Mat()
-        Core.add(mask1, mask2, redMask)
+        val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(3.0, 3.0))
+        Imgproc.morphologyEx(redMask, redMask, Imgproc.MORPH_CLOSE, kernel)
 
         return redMask
     }
 
-    // 2. Морфологическая фильтрация для устранения шума
+    private fun combineRedMasks(hsv: Mat, lower1: Scalar, upper1: Scalar, lower2: Scalar, upper2: Scalar): Mat {
+        val mask1 = Mat()
+        val mask2 = Mat()
+        Core.inRange(hsv, lower1, upper1, mask1)
+        Core.inRange(hsv, lower2, upper2, mask2)
+        val result = Mat()
+        Core.add(mask1, mask2, result)
+        return result
+    }
+
+    internal fun isNightImage(hsv: Mat): Boolean {
+        val vChannel = ArrayList<Mat>()
+        Core.split(hsv, vChannel)
+        val mean = Core.mean(vChannel[2])
+        return mean.`val`[0] < 100.0
+    }
+
     fun filterMask(mask: Mat): Mat {
         val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(5.0, 5.0))
         val morphed = Mat()
@@ -48,17 +69,9 @@ object RearLightsDetector {
         return morphed
     }
 
-    // 3. Поиск контуров на маске
-    fun findContours(filteredMask: Mat): List<MatOfPoint> {
+    fun findContours(mask: Mat): List<MatOfPoint> {
         val contours = mutableListOf<MatOfPoint>()
-        val hierarchy = Mat()
-        Imgproc.findContours(
-            filteredMask,
-            contours,
-            hierarchy,
-            Imgproc.RETR_EXTERNAL,
-            Imgproc.CHAIN_APPROX_SIMPLE
-        )
+        Imgproc.findContours(mask, contours, Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
         return contours
     }
 
@@ -66,27 +79,19 @@ object RearLightsDetector {
         val allRects = contours
             .map { Imgproc.boundingRect(it) }
             .filter { it.width * it.height > minArea }
-//            .filter { it.width * it.height < maxArea }
-            .sortedByDescending { it.y + it.height / 2 } // снизу вверх
+            .sortedByDescending { it.y + it.height / 2 }
 
         for ((index, current) in allRects.withIndex()) {
             val centerX = current.x + current.width / 2
             val centerY = current.y + current.height / 2
-
             val isLeft = centerX < imageSize.width / 2
 
-            val searchRange = allRects.subList(index + 1, allRects.size)
-
-            for (other in searchRange) {
+            for (other in allRects.subList(index + 1, allRects.size)) {
                 val otherCenterX = other.x + other.width / 2
                 val otherCenterY = other.y + other.height / 2
+                val isOpposite = if (isLeft) otherCenterX > imageSize.width / 2 else otherCenterX < imageSize.width / 2
 
-                val isOppositeSide = if (isLeft)
-                    otherCenterX > imageSize.width / 2
-                else
-                    otherCenterX < imageSize.width / 2
-
-                if (isOppositeSide && abs(centerY - otherCenterY) <= maxDeltaY) {
+                if (isOpposite && abs(centerY - otherCenterY) <= maxDeltaY) {
                     return if (isLeft) RearLightPair(current, other) else RearLightPair(other, current)
                 }
             }

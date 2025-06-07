@@ -27,7 +27,7 @@ class RearLightsDetectorTest {
         val result = Mat()
         Core.bitwise_and(inputMat, inputMat, result, redMask)
 
-        Imgcodecs.imwrite(File(debugOutputDir, "sample2_0_extractRedMask.png").absolutePath, result)
+        Imgcodecs.imwrite(File(debugOutputDir, "sample3_night_0_extractRedMask.png").absolutePath, result)
     }
 
     @Test
@@ -41,7 +41,7 @@ class RearLightsDetectorTest {
         val result = Mat()
         Core.bitwise_and(inputMat, inputMat, result, cleanedMask)
 
-        Imgcodecs.imwrite(File(debugOutputDir, "sample2_1_filterMask.png").absolutePath, result)
+        Imgcodecs.imwrite(File(debugOutputDir, "sample3_night_1_filterMask.png").absolutePath, result)
     }
 
     @Test
@@ -58,7 +58,7 @@ class RearLightsDetectorTest {
         Imgproc.drawContours(outputMat, contours, -1, Scalar(0.0, 255.0, 0.0), 2)
 
         // Сохраняем результат
-        val outFile = File(debugOutputDir, "sample2_2_findContours.png")
+        val outFile = File(debugOutputDir, "sample3_night_2_findContours.png")
         Imgcodecs.imwrite(outFile.absolutePath, outputMat)
     }
 
@@ -76,6 +76,6 @@ class RearLightsDetectorTest {
         } else
             assertFalse("Не удалось найти фонари", true)
 
-        Imgcodecs.imwrite(File(debugOutputDir, "sample2_3_filterRedLightCandidates.png").absolutePath, inputMat)
+        Imgcodecs.imwrite(File(debugOutputDir, "sample3_night_3_filterRedLightCandidates.png").absolutePath, inputMat)
     }
 }

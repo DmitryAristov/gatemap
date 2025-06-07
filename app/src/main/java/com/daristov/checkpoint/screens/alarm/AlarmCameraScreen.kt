@@ -1,108 +1,98 @@
 package com.daristov.checkpoint.screens.alarm
 
+import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.daristov.checkpoint.ui.components.CameraPreview
 import com.daristov.checkpoint.ui.components.DrawRearLightsOverlay
+import com.daristov.checkpoint.ui.components.SettingsPreferenceManager
 
 @Composable
 fun AlarmCameraScreen(
-    navController: NavHostController, viewModel: AlarmViewModel = viewModel()
+    navController: NavHostController
 ) {
+    val context = LocalContext.current
+    val application = context.applicationContext as Application
+    val settingsManager = remember { SettingsPreferenceManager(context) }
+    val factory = remember { AlarmViewModelFactory(application, settingsManager) }
+    val viewModel: AlarmViewModel = viewModel(factory = factory)
+
     val state by viewModel.uiState.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Камера
-        CameraPreview(viewModel = viewModel)
-        val bitmapSize = state.bitmapSize
-        val rearLights = state.lastDetectedRearLights
-
-        // Если найдены фонари — рисуем
-        if (rearLights != null && bitmapSize != null) {
-            DrawRearLightsOverlay(
-                rects = rearLights,
-                bitmapWidth = bitmapSize.width.toInt(),
-                bitmapHeight = bitmapSize.height.toInt()
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Камера с отступом под статус-бар
+        Box(
+            modifier = Modifier
+                .weight(1f, fill = true)
+                .padding(WindowInsets.statusBars.asPaddingValues())
+                .fillMaxWidth()
+        ) {
+            CameraPreview(
+                modifier = Modifier.fillMaxSize(),
+                viewModel = viewModel
             )
+
+            val bitmapSize = state.bitmapSize
+            val rearLights = state.lastDetectedRearLights
+
+            if (rearLights != null && bitmapSize != null) {
+                DrawRearLightsOverlay(
+                    rects = rearLights,
+                    bitmapWidth = bitmapSize.width.toInt(),
+                    bitmapHeight = bitmapSize.height.toInt()
+                )
+            }
         }
 
-        // Нижняя панель поверх камеры с прозрачностью
-        Surface(
+        // Нижняя панель
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .height(160.dp)
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
-            tonalElevation = 0.dp,
-            shadowElevation = 0.dp,
-            color = Color.Transparent, // фон берётся из background выше
-            contentColor = MaterialTheme.colorScheme.onSurface
+                .defaultMinSize(minHeight = 200.dp)
+                .background(Color.Black)
+                .padding(16.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "Pitch: %.1f".format(state.pitch))
-                Spacer(Modifier.height(8.dp))
-
-                Text(text = "Roll: %.1f".format(state.roll))
-                Spacer(Modifier.height(8.dp))
-
-                if (state.motionDetected) {
-                    Text(text = "🚨 Обнаружено движение!")
-                } else {
-                    Text(text = "")
-                }
-//                Text(
-//                    text = when (calibrationStep) {
-//                        CalibrationStep.WAITING_FOR_CAMERA -> "Подключаем камеру..."
-//                        CalibrationStep.AUTO_ADJUSTING -> "Автонастройка камеры под освещение..."
-//                        CalibrationStep.SEARCHING_CONTOURS -> "Анализ изображения, поиск контуров..."
-//                        CalibrationStep.WAITING_USER_CONFIRMATION -> "Подтвердите найденную область. Если не совпадает — укажите вручную."
-//                        CalibrationStep.TRACKING -> "Будильник включён. Следим за объектом..."
-//                        CalibrationStep.TRIGGERED -> "🚨 Обнаружено движение! Сигнал активирован."
-//                    }, style = MaterialTheme.typography.bodyLarge
-//                )
-
-                Spacer(Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Button(onClick = { navController.navigate("map") }) {
-                        Text("Назад")
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
                 Text(
-                    text = "Будильник: ${if (state.motionDetected) "🚨 Сработал" else "🟢 Ожидает"}",
+                    text = if (state.motionDetected) "🚨 Обнаружено движение!" else "🟢 Ожидает",
+                    color = Color.White,
                     style = MaterialTheme.typography.titleMedium
                 )
+                Text(
+                    text = if (state.isNight == true) "🌙 Ночь" else "☀️ День",
+                    style = MaterialTheme.typography.bodyLarge.copy(color = Color.White)
+                )
+                Button(onClick = { navController.navigate("map") }) {
+                    Text("Назад")
+                }
             }
         }
     }
