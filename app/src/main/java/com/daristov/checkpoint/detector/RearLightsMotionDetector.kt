@@ -1,5 +1,6 @@
 package com.daristov.checkpoint.detector
 
+import android.util.Log
 import com.daristov.checkpoint.detector.RearLightsDetector.RearLightPair
 import org.opencv.core.MatOfPoint2f
 import org.opencv.core.Point
@@ -7,19 +8,38 @@ import org.opencv.core.Rect
 import org.opencv.core.RotatedRect
 import org.opencv.imgproc.Imgproc
 
-private const val MAX_STEP_DISTANCE: Float = 10f
-private const val MAX_LINE_WIDTH_PX: Float = 20f
-private const val TIME_WINDOW_SECONDS: Int = 3
+private const val TIME_WINDOW_SECONDS: Int = 4
+private const val MAX_POINT_SEPARATION_RATIO: Float = 0.002f          // 0.2% от размеров кадра
+private const val MAX_LINE_DEVIATION_RATIO: Float = 0.03f             // 2% от размеров кадра
+private const val MIN_VERTICAL_MOVEMENT_RATIO: Float = 0.2f           // 20% от высоты кадра
+private const val MIN_HORIZONTAL_COMPRESSION_RATIO: Float = 0.2f      // 20% от ширины кадра
 
-class RearLightsMotionDetector() {
+class RearLightsMotionDetector(width: Int, height: Int, vertical: Double, horizontal: Double, stable: Double) {
 
-    private var stableTrajectoryRatio: Double = 0.8
+    private val TAG: String = "RearLightsMotionDetector"
 
-    private var shrinkThreshold: Float = 100f
-    private var shrinkSensitivity: Double = 0.7
+    private val MAX_POINT_SEPARATION_PX: Float
+    private val MAX_LINE_DEVIATION_PX: Float
+    private val MIN_VERTICAL_MOVEMENT_PX: Float
+    private val MIN_HORIZONTAL_COMPRESSION_PX: Float
 
-    private var riseThreshold: Float = 100f
-    private var riseSensitivity: Double = 0.7
+    private val verticalMovementSensitivity: Double = vertical
+    private val horizontalCompressionSensitivity: Double = horizontal
+    private val stableTrajectoryRatio: Double = stable
+
+    init {
+        val frameAverage = (width + height).toFloat() / 2f
+        MAX_POINT_SEPARATION_PX = frameAverage * MAX_POINT_SEPARATION_RATIO
+        MAX_LINE_DEVIATION_PX = frameAverage * MAX_LINE_DEVIATION_RATIO
+        MIN_VERTICAL_MOVEMENT_PX = height * MIN_VERTICAL_MOVEMENT_RATIO
+        MIN_HORIZONTAL_COMPRESSION_PX = width * MIN_HORIZONTAL_COMPRESSION_RATIO
+        Log.i(TAG, "Initialize motion detector with values: \n" +
+                "   width: $width\n" +
+                "   height: $height\n" +
+                "   vertical: $vertical\n" +
+                "   horizontal: $horizontal\n" +
+                "   stable: $stable")
+    }
 
     private val history = ArrayDeque<DetectionEntry>()
 
@@ -67,7 +87,7 @@ class RearLightsMotionDetector() {
             return true
 
         // проверка минимального смещения вверх
-        return checkUpMoving(leftStart, leftEnd, rightStart, rightEnd)
+        return checkUpMotion(leftStart, leftEnd, rightStart, rightEnd)
     }
 
     private fun filterStableTrajectory(points: List<PointF>): List<PointF> {
@@ -78,7 +98,7 @@ class RearLightsMotionDetector() {
 
         for (i in 1 until points.size) {
             val d = distance(points[i], points[i - 1])
-            if (d <= MAX_STEP_DISTANCE) {
+            if (d <= MAX_POINT_SEPARATION_PX) {
                 stable.add(points[i])
             }
         }
@@ -100,35 +120,31 @@ class RearLightsMotionDetector() {
         val height = rotatedRect.size.height
         val shortSide = minOf(width, height)
 
-        return shortSide <= MAX_LINE_WIDTH_PX
+        return shortSide <= MAX_LINE_DEVIATION_PX
     }
 
-    private fun checkUpMoving(leftStart: PointF, leftEnd: PointF, rightStart: PointF, rightEnd: PointF): Boolean {
-        val shrinkLeftDelta = leftStart.y - leftEnd.y
-        val shrinkRightDelta = rightStart.y - rightEnd.y
-        val finalShrinkThreshold = shrinkThreshold * shrinkSensitivity
-        return shrinkLeftDelta > finalShrinkThreshold && shrinkRightDelta > finalShrinkThreshold
+    private fun checkUpMotion(leftStart: PointF, leftEnd: PointF, rightStart: PointF, rightEnd: PointF): Boolean {
+        val verticalMovementLeftDelta = leftStart.y - leftEnd.y
+        val verticalMovementRightDelta = rightStart.y - rightEnd.y
+        val finalVerticalMovementThreshold = MIN_VERTICAL_MOVEMENT_PX * verticalMovementSensitivity
+        if (verticalMovementLeftDelta > finalVerticalMovementThreshold && verticalMovementRightDelta > finalVerticalMovementThreshold) {
+            Log.i(TAG, "Found vertical motion {left: $verticalMovementLeftDelta, right: $verticalMovementRightDelta, final: $finalVerticalMovementThreshold}")
+            return true
+        }
+        return false
     }
 
     private fun checkDistanceDecrease(leftStart: PointF, rightStart: PointF, leftEnd: PointF, rightEnd: PointF): Boolean {
         val initialDistance = distance(leftStart, rightStart)
         val finalDistance = distance(leftEnd, rightEnd)
-        val riseDelta = initialDistance - finalDistance
+        val horizontalDelta = initialDistance - finalDistance
+        val finalHorizontalThreshold = MIN_HORIZONTAL_COMPRESSION_PX * horizontalCompressionSensitivity
 
-        if (riseDelta > riseThreshold * riseSensitivity) return true
+        if (horizontalDelta > finalHorizontalThreshold) {
+            Log.i(TAG, "Found horizontal motion {delta: $horizontalDelta, final: $horizontalCompressionSensitivity}")
+            return true
+        }
         return false
-    }
-
-    fun setRiseSensitivity(value: Double) {
-        riseSensitivity = value
-    }
-
-    fun setShrinkSensitivity(value: Double) {
-        shrinkSensitivity = value
-    }
-
-    fun setStableTrajectoryRatio(value: Double) {
-        stableTrajectoryRatio = value
     }
 
     private fun distance(p1: PointF, p2: PointF): Float {

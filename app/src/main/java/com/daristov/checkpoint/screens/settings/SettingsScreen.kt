@@ -9,6 +9,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
@@ -29,57 +31,79 @@ import androidx.navigation.NavHostController
 const val iconToTextRatio = 2.5f
 
 @Composable
-fun SettingsScreen(navController: NavHostController, viewModel: SettingsViewModel = viewModel()) {
+fun SettingsScreen(
+    navController: NavHostController,
+    viewModel: SettingsViewModel = viewModel()
+) {
     val context = LocalContext.current
+    val iconSizeDp = getIconSizeDp()
 
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .padding(16.dp) ) {
+    val topPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-        val iconSizeDp = getIconSizeDp()
-
-        Spacer(Modifier.height(30.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { navController.navigate("map") },
-                modifier = Modifier.size(iconSizeDp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = topPadding, bottom = bottomPadding)
+    ) {
+        // 🔹 Фиксированная кнопка назад
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = { navController.navigate("map") },
+                modifier = Modifier.size(iconSizeDp)
+            ) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
             }
             Text("Назад", style = MaterialTheme.typography.titleLarge)
         }
-        Spacer(Modifier.height(15.dp))
 
-        HorizontalDivider(Modifier.padding(vertical = 3.dp))
-        Spacer(Modifier.height(8.dp))
-        ThemeSelector(viewModel)
+        // 🔹 Прокручиваемый контент
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+        ) {
+            Spacer(Modifier.height(12.dp))
 
-        HorizontalDivider(Modifier.padding(vertical = 3.dp))
-        RiseSensitivitySlider(viewModel)
+            HorizontalDivider(Modifier.padding(vertical = 3.dp))
+            Spacer(Modifier.height(8.dp))
+            ThemeSelector(viewModel)
 
-        HorizontalDivider(Modifier.padding(vertical = 3.dp))
-        ShrinkSensitivitySlider(viewModel)
+            HorizontalDivider(Modifier.padding(vertical = 3.dp))
+            Spacer(Modifier.height(8.dp))
+            HorizontalCompressionSensitivitySlider(viewModel)
 
-        HorizontalDivider(Modifier.padding(vertical = 3.dp))
-        StableTrajectorySensitivitySlider(viewModel)
+            HorizontalDivider(Modifier.padding(vertical = 3.dp))
+            Spacer(Modifier.height(8.dp))
+            VerticalMovementSensitivitySlider(viewModel)
 
-        HorizontalDivider(Modifier.padding(vertical = 3.dp))
-        RingtonePicker(
-            context = context,
-            selectedAlarmUri = viewModel.selectedAlarmUri,
-            onPicked = { viewModel.changeAlarmUri(it) }
-        )
+            HorizontalDivider(Modifier.padding(vertical = 3.dp))
+            Spacer(Modifier.height(8.dp))
+            StableTrajectorySensitivitySlider(viewModel)
 
-        HorizontalDivider(Modifier.padding(vertical = 3.dp))
-        LanguageDropdown(viewModel)
-        HorizontalDivider(Modifier.padding(vertical = 3.dp))
-    }
+            HorizontalDivider(Modifier.padding(vertical = 3.dp))
+            Spacer(Modifier.height(8.dp))
+            RingtonePicker(
+                context = context,
+                selectedAlarmUri = viewModel.selectedAlarmUri,
+                onPicked = { viewModel.changeAlarmUri(it) }
+            )
 
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .padding(16.dp),
-        verticalArrangement = Arrangement.Bottom) {
-        HorizontalDivider(Modifier.padding(vertical = 3.dp))
-        AboutItem(navController)
-        HorizontalDivider(Modifier.padding(vertical = 3.dp))
+            HorizontalDivider(Modifier.padding(vertical = 3.dp))
+            Spacer(Modifier.height(8.dp))
+            LanguageDropdown(viewModel)
+
+            HorizontalDivider(Modifier.padding(vertical = 3.dp))
+            Spacer(Modifier.height(8.dp))
+            AboutItem(navController)
+
+            Spacer(Modifier.height(16.dp)) // отступ до нижнего края
+        }
     }
 }
 
@@ -137,54 +161,54 @@ fun RingtonePicker(context: Context, selectedAlarmUri: Uri?, onPicked: (Uri) -> 
 }
 
 @Composable
-fun RiseSensitivitySlider(viewModel: SettingsViewModel) {
-    val sensitivity by viewModel.riseSensitivity.collectAsState()
+fun HorizontalCompressionSensitivitySlider(viewModel: SettingsViewModel) {
+    val sensitivity by viewModel.horizontalCompressionSensitivity.collectAsState()
 
     Column(modifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = 16.dp, vertical = 12.dp)) {
 
-        Text("Чувствительность движения вверх", style = MaterialTheme.typography.titleMedium)
+        Text("Насколько машина должна сместиться вверх чтобы сработал будильник?", style = MaterialTheme.typography.titleMedium)
 
         Slider(
             value = sensitivity.toFloat(),
-            onValueChange = { viewModel.changeRiseSensitivity(it.toInt()) },
+            onValueChange = { viewModel.changeHorizontalCompressionSensitivity(it.toInt()) },
             valueRange = 0f..100f
         )
 
         val label = when {
-            sensitivity < 35 -> "Низкая"
-            sensitivity < 70 -> "Средняя"
-            else -> "Высокая"
+            sensitivity < 35 -> "Немного"
+            sensitivity < 70 -> "Средне"
+            else -> "Сильно"
         }
 
-        Text("Текущий уровень: $sensitivity ($label)")
+        Text("Текущее значение: $sensitivity ($label)")
     }
 }
 
 @Composable
-fun ShrinkSensitivitySlider(viewModel: SettingsViewModel) {
-    val sensitivity by viewModel.shrinkSensitivity.collectAsState()
+fun VerticalMovementSensitivitySlider(viewModel: SettingsViewModel) {
+    val sensitivity by viewModel.verticalMovementSensitivity.collectAsState()
 
     Column(modifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = 16.dp, vertical = 12.dp)) {
 
-        Text("Чувствительность уменьшения фонарей", style = MaterialTheme.typography.titleMedium)
+        Text("Насколько должна уменьшиться машина чтобы сработал будильник?", style = MaterialTheme.typography.titleMedium)
 
         Slider(
             value = sensitivity.toFloat(),
-            onValueChange = { viewModel.changeShrinkSensitivity(it.toInt()) },
+            onValueChange = { viewModel.changeVerticalMovementSensitivity(it.toInt()) },
             valueRange = 0f..100f
         )
 
         val label = when {
-            sensitivity < 35 -> "Низкая"
-            sensitivity < 70 -> "Средняя"
-            else -> "Высокая"
+            sensitivity < 35 -> "Немного"
+            sensitivity < 70 -> "Средне"
+            else -> "Сильно"
         }
 
-        Text("Текущий уровень: $sensitivity ($label)")
+        Text("Текущее значение: $sensitivity ($label)")
     }
 }
 
@@ -196,7 +220,7 @@ fun StableTrajectorySensitivitySlider(viewModel: SettingsViewModel) {
         .fillMaxWidth()
         .padding(horizontal = 16.dp, vertical = 12.dp)) {
 
-        Text("Чувствительность стабильности траектории", style = MaterialTheme.typography.titleMedium)
+        Text("Насколько стабильным должно быть движение машины?", style = MaterialTheme.typography.titleMedium)
 
         Slider(
             value = sensitivity.toFloat(),

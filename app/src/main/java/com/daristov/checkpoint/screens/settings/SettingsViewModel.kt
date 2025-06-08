@@ -17,16 +17,16 @@ enum class AppLanguage { RU, KZ, EN }
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val pref = SettingsPreferenceManager(application.applicationContext)
     private val _themeMode = MutableStateFlow(AppThemeMode.SYSTEM)
-    private val _shrinkSensitivity = MutableStateFlow(100)
-    private val _riseSensitivity = MutableStateFlow(100)
-    private val _stableTrajectorySensitivity = MutableStateFlow(100)
+    private val _verticalMovementSensitivity = MutableStateFlow(80)
+    private val _horizontalCompressionSensitivity = MutableStateFlow(80)
+    private val _stableTrajectorySensitivity = MutableStateFlow(50)
     private val _language = MutableStateFlow(AppLanguage.RU)
 
     val themeMode: StateFlow<AppThemeMode> = _themeMode
     var selectedAlarmUri by mutableStateOf<Uri?>(null)
         private set
-    val shrinkSensitivity: StateFlow<Int> = _shrinkSensitivity
-    val riseSensitivity: StateFlow<Int> = _riseSensitivity
+    val verticalMovementSensitivity: StateFlow<Int> = _verticalMovementSensitivity
+    val horizontalCompressionSensitivity: StateFlow<Int> = _horizontalCompressionSensitivity
     val stableTrajectorySensitivity: StateFlow<Int> = _stableTrajectorySensitivity
     val language: StateFlow<AppLanguage> = _language
 
@@ -40,11 +40,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
 
         viewModelScope.launch {
-            pref.getRiseSensitivity().collect { _riseSensitivity.value = it }
+            pref.getHorizontalCompressionSensitivity().collect { _horizontalCompressionSensitivity.value = it }
         }
 
         viewModelScope.launch {
-            pref.getShrinkSensitivity().collect { _shrinkSensitivity.value = it }
+            pref.getVerticalMovementSensitivity().collect { _verticalMovementSensitivity.value = it }
         }
 
         viewModelScope.launch {
@@ -71,14 +71,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun changeShrinkSensitivity(value: Int) {
-        _shrinkSensitivity.value = value
-        viewModelScope.launch { pref.setShrinkSensitivity(value) }
+    fun changeVerticalMovementSensitivity(value: Int) {
+        _verticalMovementSensitivity.value = value
+        viewModelScope.launch { pref.setVerticalMovementSensitivity(value) }
     }
 
-    fun changeRiseSensitivity(value: Int) {
-        _riseSensitivity.value = value
-        viewModelScope.launch { pref.setRiseSensitivity(value) }
+    fun changeHorizontalCompressionSensitivity(value: Int) {
+        _horizontalCompressionSensitivity.value = value
+        viewModelScope.launch { pref.setHorizontalCompressionSensitivity(value) }
     }
 
     fun changeStableTrajectoryRatio(value: Int) {

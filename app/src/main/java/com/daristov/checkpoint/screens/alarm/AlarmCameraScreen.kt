@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -32,9 +33,7 @@ import com.daristov.checkpoint.ui.components.DrawRearLightsOverlay
 import com.daristov.checkpoint.screens.settings.SettingsPreferenceManager
 
 @Composable
-fun AlarmCameraScreen(
-    navController: NavHostController
-) {
+fun AlarmCameraScreen(navController: NavHostController) {
     val context = LocalContext.current
     val application = context.applicationContext as Application
     val settingsManager = remember { SettingsPreferenceManager(context) }
@@ -43,12 +42,18 @@ fun AlarmCameraScreen(
 
     val state by viewModel.uiState.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Камера с отступом под статус-бар
+    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = statusBarPadding, bottom = navBarPadding)
+    ) {
+        // Камера
         Box(
             modifier = Modifier
-                .weight(1f, fill = true)
-                .padding(WindowInsets.statusBars.asPaddingValues())
+                .weight(1f)
                 .fillMaxWidth()
         ) {
             CameraPreview(
@@ -72,7 +77,7 @@ fun AlarmCameraScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .defaultMinSize(minHeight = 200.dp)
+                .defaultMinSize(minHeight = 100.dp)
                 .background(Color.Black)
                 .padding(16.dp)
         ) {
@@ -97,3 +102,4 @@ fun AlarmCameraScreen(
         }
     }
 }
+

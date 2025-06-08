@@ -16,8 +16,8 @@ class SettingsPreferenceManager(private val context: Context) {
 
     private val THEME_KEY = stringPreferencesKey("theme")
     private val RINGTONE_KEY = stringPreferencesKey("alarm_ringtone_uri")
-    private val SHRINK_SENSITIVITY_KEY = intPreferencesKey("shrink_sensitivity_int")
-    private val RISE_SENSITIVITY_KEY = intPreferencesKey("rise_sensitivity_int")
+    private val VERTICAL_MOVEMENT_SENSITIVITY_KEY = intPreferencesKey("vertical_movement_sensitivity_int")
+    private val HORIZONTAL_COMPRESSION_SENSITIVITY_KEY = intPreferencesKey("horizontal_compression_sensitivity_int")
     private val STABLE_TRAJECTORY_SENSITIVITY_KEY = intPreferencesKey("stable_trajectory_sensitivity_int")
     private val LANGUAGE_KEY = stringPreferencesKey("app_language")
 
@@ -46,28 +46,28 @@ class SettingsPreferenceManager(private val context: Context) {
         }
     }
 
-    fun getShrinkSensitivity(): Flow<Int> = context.dataStore.data.map { prefs ->
-        prefs[SHRINK_SENSITIVITY_KEY] ?: 100
+    fun getVerticalMovementSensitivity(): Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[VERTICAL_MOVEMENT_SENSITIVITY_KEY] ?: 80
     }
 
-    suspend fun setShrinkSensitivity(value: Int) {
+    suspend fun setVerticalMovementSensitivity(value: Int) {
         context.dataStore.edit { prefs ->
-            prefs[SHRINK_SENSITIVITY_KEY] = value
+            prefs[VERTICAL_MOVEMENT_SENSITIVITY_KEY] = value
         }
     }
 
-    fun getRiseSensitivity(): Flow<Int> = context.dataStore.data.map { prefs ->
-        prefs[RISE_SENSITIVITY_KEY] ?: 100
+    fun getHorizontalCompressionSensitivity(): Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[HORIZONTAL_COMPRESSION_SENSITIVITY_KEY] ?: 80
     }
 
-    suspend fun setRiseSensitivity(value: Int) {
+    suspend fun setHorizontalCompressionSensitivity(value: Int) {
         context.dataStore.edit { prefs ->
-            prefs[RISE_SENSITIVITY_KEY] = value
+            prefs[HORIZONTAL_COMPRESSION_SENSITIVITY_KEY] = value
         }
     }
 
     fun getStableTrajectoryRatio(): Flow<Int> = context.dataStore.data.map { prefs ->
-        prefs[STABLE_TRAJECTORY_SENSITIVITY_KEY] ?: 100
+        prefs[STABLE_TRAJECTORY_SENSITIVITY_KEY] ?: 50
     }
 
     suspend fun setStableTrajectoryRatio(value: Int) {

@@ -28,26 +28,44 @@ class AlarmViewModel(
 
     private val vehicleDetector = VehicleDetector()
     private val orientationProvider = OrientationProvider(application.applicationContext)
-    private val motionDetector = RearLightsMotionDetector()
+    private lateinit var motionDetector: RearLightsMotionDetector
 
     private val _uiState = MutableStateFlow(AlarmUiState())
     val uiState: StateFlow<AlarmUiState> = _uiState
 
+    private var frameWidth: Int = 0
+    private var frameHeight: Int = 0
+    private var horizontalCompressionSensitivity: Double = 0.0
+    private var verticalMovementSensitivity: Double = 0.0
+    private var stableTrajectoryRatio: Double = 0.0
+
     init {
         viewModelScope.launch {
-            settingsManager.getRiseSensitivity().collect {
-                motionDetector.setRiseSensitivity(it * 0.01)
+            settingsManager.getVerticalMovementSensitivity().collect {
+                verticalMovementSensitivity = it.toFloat() * 0.01
             }
-            settingsManager.getShrinkSensitivity().collect {
-                motionDetector.setShrinkSensitivity(it * 0.01)
+        }
+        viewModelScope.launch {
+            settingsManager.getHorizontalCompressionSensitivity().collect {
+                horizontalCompressionSensitivity = it.toFloat() * 0.01
             }
+        }
+        viewModelScope.launch {
             settingsManager.getStableTrajectoryRatio().collect {
-                motionDetector.setStableTrajectoryRatio(it * 0.01)
+                stableTrajectoryRatio = it.toFloat() * 0.01
             }
         }
     }
+
     fun handleImageProxy(imageProxy: ImageProxy) {
         val bitmap = ImageProxyUtils.toBitmap(imageProxy)
+
+        if (frameWidth == 0 || frameHeight == 0) {
+            frameWidth = bitmap.width
+            frameHeight = bitmap.height
+            motionDetector = RearLightsMotionDetector(frameWidth, frameHeight,
+                verticalMovementSensitivity, horizontalCompressionSensitivity, stableTrajectoryRatio)
+        }
 
         val mat = Mat()
         Utils.bitmapToMat(bitmap, mat)
