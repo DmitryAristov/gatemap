@@ -66,6 +66,7 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation("com.quickbirdstudios:opencv:4.5.3.0")
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
