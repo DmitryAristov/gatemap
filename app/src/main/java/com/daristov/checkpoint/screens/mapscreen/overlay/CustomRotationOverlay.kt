@@ -20,6 +20,11 @@ class CustomRotationOverlay(
     override fun onTouchEvent(event: MotionEvent, mapView: MapView): Boolean {
         if (event.pointerCount != 2) return false
 
+        mapView.overlays
+            .filterIsInstance<CustomLocationOverlay>()
+            .firstOrNull()
+            ?.disableFollowLocation()
+
         when (event.actionMasked) {
             MotionEvent.ACTION_POINTER_DOWN -> {
                 if (event.pointerCount >= 2) {

@@ -77,6 +77,7 @@ class LocationService : LifecycleService() {
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setSilent(true)
             .setOngoing(true)
             .build()
     }

@@ -126,7 +126,7 @@ class MapViewModel : ViewModel() {
     }
 
     fun sendSurveyAnswer(answer: Int) {
-
+        //TODO: send answer to server
     }
 
 }

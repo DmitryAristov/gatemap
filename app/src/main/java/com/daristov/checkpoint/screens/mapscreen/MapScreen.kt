@@ -54,8 +54,11 @@ fun MapScreen(navController: NavHostController, viewModel: MapViewModel = viewMo
     var mapReady = false
     val mapView = rememberMapViewWithLifecycle()
     val isMapInitialized = remember { mutableStateOf(false) }
-    var isInitialZoomDone by remember { mutableStateOf(false) }
+    var isAnimatedToInitialLocation by remember { mutableStateOf(false) }
     var isNearestCheckpointFound by remember { mutableStateOf(false) }
+    var isInitialZoomDone by remember { mutableStateOf(false) }
+    var needToShowSurvey by remember { mutableStateOf(false) }
+
     val location by viewModel.location.collectAsState()
     val nearestCheckpoint by viewModel.nearestCheckpoint.collectAsState()
 
@@ -102,7 +105,11 @@ fun MapScreen(navController: NavHostController, viewModel: MapViewModel = viewMo
                 IconButton(
                     onClick = {
                         viewModel.location.value?.let {
-                            mapView.controller.animateTo(GeoPoint(it))
+                            mapView.controller.animateTo(GeoPoint(it), 18.0, 1000L)
+                            mapView.overlays
+                                .filterIsInstance<CustomLocationOverlay>()
+                                .firstOrNull()
+                                ?.enableFollowLocation()
                         }
                     },
                     modifier = Modifier
@@ -122,7 +129,7 @@ fun MapScreen(navController: NavHostController, viewModel: MapViewModel = viewMo
                 }
             }
             QueueSurveyManager(
-                isUserInQueue = isNearestCheckpointFound,
+                isUserInQueue = needToShowSurvey,
                 onAnswer = { minutes ->
                     viewModel.sendSurveyAnswer(minutes)
                 },
@@ -145,13 +152,20 @@ fun MapScreen(navController: NavHostController, viewModel: MapViewModel = viewMo
     LaunchedEffect(location) {
         location?.let {
             val point = GeoPoint(it.latitude, it.longitude)
-            mapView.overlays.filterIsInstance<CustomLocationOverlay>().firstOrNull()?.updateLocation(it)
+            val locationOverlay = mapView.overlays.filterIsInstance<CustomLocationOverlay>().firstOrNull()
+            locationOverlay?.updateLocation(it)
 
-            if (!isInitialZoomDone) {
+            if (!isAnimatedToInitialLocation) {
                 mapView.controller.animateTo(point)
                 val bbox = point.createBoundingBoxAround(100.0)
                 viewModel.loadCheckpointsInVisibleArea(bbox, mapView.zoomLevelDouble)
-                isInitialZoomDone = true
+                isAnimatedToInitialLocation = true
+            }
+
+            // === Автовращение карты по направлению движения ===
+            if (locationOverlay?.isFollowLocationEnabled == true && it.speed > 1 && it.hasBearing()) {
+                mapView.mapOrientation = it.bearing
+                mapView.invalidate()
             }
         }
     }
@@ -179,6 +193,7 @@ fun MapScreen(navController: NavHostController, viewModel: MapViewModel = viewMo
     }
 
     LaunchedEffect(location, nearestCheckpoint) {
+        if (isInitialZoomDone) return@LaunchedEffect
         val loc = location ?: return@LaunchedEffect
         val nearest = nearestCheckpoint ?: return@LaunchedEffect
 
@@ -186,22 +201,32 @@ fun MapScreen(navController: NavHostController, viewModel: MapViewModel = viewMo
         val cpPoint = GeoPoint(nearest.latitude, nearest.longitude)
         val distance = userPoint.distanceToAsDouble(cpPoint)
 
-        if (distance < 60_000) {
+        if (distance < 5000) {
             val heading = computeHeading(userPoint, nearest.location)
             mapView.mapOrientation = ((heading + 90 + 360) % 360).toFloat()
+            mapView.controller.setZoom(18.0)
 
-            mapView.overlays
-                .filterIsInstance<CustomLocationOverlay>()
-                .firstOrNull()
-                ?.enableFollowLocation()
+            needToShowSurvey = true
+            isInitialZoomDone = true
             return@LaunchedEffect
         }
 
-        if (loc.speed > 10) {
-            //TODO
-        } else {
-            //TODO
+        if (loc.speed > 10) { // ~36 км/ч
+            var nearest: List<MapObject> = viewModel.findNearestCheckpoints(userPoint)
+            mapView.zoomToCheckpoints(userPoint, nearest.map { GeoPoint(it.latitude, it.longitude) })
+
+            isInitialZoomDone = true
+            return@LaunchedEffect
         }
+
+        mapView.controller.animateTo(userPoint, 18.0, 1000L)
+        mapView.overlays
+            .filterIsInstance<CustomLocationOverlay>()
+            .firstOrNull()
+            ?.enableFollowLocation()
+
+        isInitialZoomDone = true
+        return@LaunchedEffect
     }
 }
 
@@ -214,7 +239,7 @@ fun rememberMapViewWithLifecycle(viewModel: MapViewModel = viewModel()): MapView
             id = R.id.map
             setTileSource(TileSourceFactory.DEFAULT_TILE_SOURCE)
             setMultiTouchControls(false)
-            controller.setZoom(12.0)
+            controller.setZoom(10.0)
         }
     }
 
@@ -344,6 +369,7 @@ fun MapView.showCheckpoints(checkpoints: List<MapObject>, context: Context) {
                 icon = ContextCompat.getDrawable(context, R.drawable.ic_checkpoint) // или стандартная иконка
                 isDraggable = false
                 setOnMarkerClickListener { marker, _ ->
+                    //TODO
                     Toast.makeText(context, "КПП: ${marker.title}", Toast.LENGTH_SHORT).show()
                     true
                 }
@@ -353,6 +379,29 @@ fun MapView.showCheckpoints(checkpoints: List<MapObject>, context: Context) {
     }
 
     invalidate()
+}
+
+fun GeoPoint.createBoundingBoxAround(distanceKm: Double): BoundingBox {
+    val latDegreeDelta = distanceKm / 111.0 // приближённо 111 км на градус широты
+    // для долготы учитываем сжатие по широте
+    val lonDegreeDelta = distanceKm / (111.320 * cos(Math.toRadians(latitude)))
+    return BoundingBox(
+        latitude + latDegreeDelta,  // north
+        longitude + lonDegreeDelta,  // east
+        latitude - latDegreeDelta,  // south
+        longitude - lonDegreeDelta   // west
+    )
+}
+
+fun MapView.zoomToCheckpoints(
+    userPoint: GeoPoint, nearest: List<GeoPoint>
+) {
+    val bounds = BoundingBox.fromGeoPointsSafe(nearest + userPoint).increaseByMargin(0.1) // 10% запас
+
+    val target = nearest.first()
+    mapOrientation = ((computeHeading(userPoint, target) + 90 + 360) % 360).toFloat()
+
+    this.zoomToBoundingBox(bounds, true)
 }
 
 fun computeHeading(from: GeoPoint, to: GeoPoint): Double {
@@ -367,14 +416,17 @@ fun computeHeading(from: GeoPoint, to: GeoPoint): Double {
     return Math.toDegrees(atan2(y, x))
 }
 
-fun GeoPoint.createBoundingBoxAround(distanceKm: Double): BoundingBox {
-    val latDegreeDelta = distanceKm / 111.0 // приближённо 111 км на градус широты
-    // для долготы учитываем сжатие по широте
-    val lonDegreeDelta = distanceKm / (111.320 * cos(Math.toRadians(latitude)))
+fun BoundingBox.increaseByMargin(marginFraction: Double): BoundingBox {
+    val latSpan = this.latitudeSpan
+    val lonSpan = this.longitudeSpan
+
+    val latMargin = latSpan * marginFraction
+    val lonMargin = lonSpan * marginFraction
+
     return BoundingBox(
-        latitude + latDegreeDelta,  // north
-        longitude + lonDegreeDelta,  // east
-        latitude - latDegreeDelta,  // south
-        longitude - lonDegreeDelta   // west
+        this.latNorth + latMargin,
+        this.lonEast + lonMargin,
+        this.latSouth - latMargin,
+        this.lonWest - lonMargin
     )
 }
