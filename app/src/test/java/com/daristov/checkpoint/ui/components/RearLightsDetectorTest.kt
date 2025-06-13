@@ -1,6 +1,6 @@
 package com.daristov.checkpoint.ui.components
 
-import com.daristov.checkpoint.detector.RearLightsDetector
+import com.daristov.checkpoint.screens.alarm.detector.RearLightsDetector
 import org.junit.Assert.assertFalse
 import org.junit.Test
 import org.opencv.core.Core
@@ -18,11 +18,12 @@ class RearLightsDetectorTest {
         nu.pattern.OpenCV.loadLocally()
     }
 
+    val rearLightsDetector: RearLightsDetector = RearLightsDetector()
     @Test
     fun extractRedMaskTest() {
         val inputMat = Imgcodecs.imread(inputMatPath)
         assertFalse("Изображение не загружено", inputMat.empty())
-        val redMask = RearLightsDetector.extractRedMask(inputMat)
+        val redMask = rearLightsDetector.extractRedMask(inputMat)
 
         val result = Mat()
         Core.bitwise_and(inputMat, inputMat, result, redMask)
@@ -35,8 +36,8 @@ class RearLightsDetectorTest {
         val inputMat = Imgcodecs.imread(inputMatPath)
         assertFalse("Изображение не загружено", inputMat.empty())
 
-        val redMask = RearLightsDetector.extractRedMask(inputMat)
-        val cleanedMask = RearLightsDetector.filterMask(redMask)
+        val redMask = rearLightsDetector.extractRedMask(inputMat)
+        val cleanedMask = rearLightsDetector.filterMask(redMask)
 
         val result = Mat()
         Core.bitwise_and(inputMat, inputMat, result, cleanedMask)
@@ -49,9 +50,9 @@ class RearLightsDetectorTest {
         val inputMat = Imgcodecs.imread(inputMatPath)
         assertFalse("Изображение не загружено", inputMat.empty())
 
-        val redMask = RearLightsDetector.extractRedMask(inputMat)
-        val cleanedMask = RearLightsDetector.filterMask(redMask)
-        val contours = RearLightsDetector.findContours(cleanedMask)
+        val redMask = rearLightsDetector.extractRedMask(inputMat)
+        val cleanedMask = rearLightsDetector.filterMask(redMask)
+        val contours = rearLightsDetector.findContours(cleanedMask)
 
         // Копия изображения для отрисовки
         val outputMat = inputMat.clone()
@@ -66,10 +67,10 @@ class RearLightsDetectorTest {
     fun filterRedLightCandidatesTest() {
         val inputMat = Imgcodecs.imread(inputMatPath)
         assertFalse("Изображение не загружено", inputMat.empty())
-        val redMask = RearLightsDetector.extractRedMask(inputMat)
-        val cleanedMask = RearLightsDetector.filterMask(redMask)
-        val contours = RearLightsDetector.findContours(cleanedMask)
-        val rearLightPair = RearLightsDetector.filterRedLightCandidates(contours, inputMat.size())
+        val redMask = rearLightsDetector.extractRedMask(inputMat)
+        val cleanedMask = rearLightsDetector.filterMask(redMask)
+        val contours = rearLightsDetector.findContours(cleanedMask)
+        val rearLightPair = rearLightsDetector.filterRedLightCandidates(contours, inputMat.size())
         if (rearLightPair != null) {
             Imgproc.rectangle(inputMat, rearLightPair.left.tl(), rearLightPair.left.br(), Scalar(0.0, 255.0, 0.0), 6)
             Imgproc.rectangle(inputMat, rearLightPair.right.tl(), rearLightPair.right.br(), Scalar(0.0, 255.0, 0.0), 6)

@@ -1,4 +1,4 @@
-package com.daristov.checkpoint.sensor
+package com.daristov.checkpoint.service
 
 import android.content.Context
 import android.hardware.*

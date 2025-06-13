@@ -1,4 +1,4 @@
-package com.daristov.checkpoint.screens.alarm
+package com.daristov.checkpoint.screens.alarm.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.ViewModel

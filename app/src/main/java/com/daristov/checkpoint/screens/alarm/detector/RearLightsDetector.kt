@@ -1,5 +1,7 @@
-package com.daristov.checkpoint.detector
+package com.daristov.checkpoint.screens.alarm.detector
 
+import android.graphics.Bitmap
+import org.opencv.android.Utils
 import org.opencv.core.Core
 import org.opencv.core.Mat
 import org.opencv.core.MatOfPoint
@@ -9,11 +11,21 @@ import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
 import kotlin.math.abs
 
-object RearLightsDetector {
-    data class RearLightPair(val left: Rect, val right: Rect)
+private const val minArea = 200
+private const val maxDeltaY = 50
 
-    private const val minArea = 200
-    private const val maxDeltaY = 50
+class RearLightsDetector {
+
+    fun process(bitmap: Bitmap): RearLightPair? {
+        val mat = Mat()
+        Utils.bitmapToMat(bitmap, mat)
+        Imgproc.cvtColor(mat, mat, Imgproc.COLOR_RGBA2BGR)
+        val redMask = extractRedMask(mat)
+        val cleanedMask = filterMask(redMask)
+        val contours = findContours(cleanedMask)
+        val rearLightPair = filterRedLightCandidates(contours, mat.size())
+        return rearLightPair
+    }
 
     // Основная функция получения маски
     fun extractRedMask(input: Mat): Mat {
@@ -98,4 +110,6 @@ object RearLightsDetector {
         }
         return null
     }
+
+    data class RearLightPair(val left: Rect, val right: Rect)
 }

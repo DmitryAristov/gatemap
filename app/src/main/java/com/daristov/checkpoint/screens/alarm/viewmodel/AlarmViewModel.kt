@@ -1,4 +1,4 @@
-package com.daristov.checkpoint.screens.alarm
+package com.daristov.checkpoint.screens.alarm.viewmodel
 
 import android.app.Application
 import android.graphics.Bitmap
@@ -6,12 +6,12 @@ import android.util.Size
 import androidx.camera.core.ImageProxy
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.daristov.checkpoint.detector.RearLightsDetector
-import com.daristov.checkpoint.detector.RearLightsMotionDetector
+import com.daristov.checkpoint.screens.alarm.AlarmUiState
+import com.daristov.checkpoint.screens.alarm.detector.RearLightsDetector
+import com.daristov.checkpoint.screens.alarm.detector.RearLightsMotionDetector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import com.daristov.checkpoint.detector.VehicleDetector
-import com.daristov.checkpoint.sensor.OrientationProvider
+import com.daristov.checkpoint.service.OrientationProvider
 import com.daristov.checkpoint.screens.settings.SettingsPreferenceManager
 import com.daristov.checkpoint.util.ImageProxyUtils
 import kotlinx.coroutines.Dispatchers
@@ -26,9 +26,9 @@ class AlarmViewModel(
     private val settingsManager: SettingsPreferenceManager
 ) : AndroidViewModel(application), OrientationProvider.Listener {
 
-    private val vehicleDetector = VehicleDetector()
     private val orientationProvider = OrientationProvider(application.applicationContext)
     private lateinit var motionDetector: RearLightsMotionDetector
+    private val lightsDetector: RearLightsDetector = RearLightsDetector()
 
     private val _uiState = MutableStateFlow(AlarmUiState())
     val uiState: StateFlow<AlarmUiState> = _uiState
@@ -73,7 +73,7 @@ class AlarmViewModel(
         val hsv = Mat()
         Imgproc.cvtColor(mat, hsv, Imgproc.COLOR_BGR2HSV)
 
-        val night = RearLightsDetector.isNightImage(hsv)
+        val night = lightsDetector.isNightImage(hsv)
         _uiState.update {
             it.copy(isNight = night, bitmapSize = Size(bitmap.width, bitmap.height))
         }
@@ -84,7 +84,7 @@ class AlarmViewModel(
 
     fun analyzeFrame(bitmap: Bitmap) {
         viewModelScope.launch(Dispatchers.Default) {
-            val rearLightPair = vehicleDetector.process(bitmap)
+            val rearLightPair = lightsDetector.process(bitmap)
             if (rearLightPair != null) {
                 val motionDetected = motionDetector.update(rearLightPair)
                 _uiState.update {

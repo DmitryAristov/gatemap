@@ -1,8 +1,7 @@
 package com.daristov.checkpoint.screens.alarm
 
 import android.util.Size
-import com.daristov.checkpoint.detector.RearLightsDetector.RearLightPair
-import org.opencv.core.Rect
+import com.daristov.checkpoint.screens.alarm.detector.RearLightsDetector.RearLightPair
 
 data class AlarmUiState(
     val lastDetectedRearLights: RearLightPair? = null,

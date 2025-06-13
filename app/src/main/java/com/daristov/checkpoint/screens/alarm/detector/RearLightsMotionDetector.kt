@@ -1,12 +1,13 @@
-package com.daristov.checkpoint.detector
+package com.daristov.checkpoint.screens.alarm.detector
 
 import android.util.Log
-import com.daristov.checkpoint.detector.RearLightsDetector.RearLightPair
+import com.daristov.checkpoint.screens.alarm.detector.RearLightsDetector.RearLightPair
 import org.opencv.core.MatOfPoint2f
 import org.opencv.core.Point
 import org.opencv.core.Rect
 import org.opencv.core.RotatedRect
 import org.opencv.imgproc.Imgproc
+import kotlin.math.sqrt
 
 private const val TIME_WINDOW_SECONDS: Int = 4
 private const val MAX_POINT_SEPARATION_RATIO: Float = 0.002f          // 0.2% от размеров кадра
@@ -150,7 +151,7 @@ class RearLightsMotionDetector(width: Int, height: Int, vertical: Double, horizo
     private fun distance(p1: PointF, p2: PointF): Float {
         val dx = p1.x - p2.x
         val dy = p1.y - p2.y
-        return kotlin.math.sqrt(dx * dx + dy * dy)
+        return sqrt(dx * dx + dy * dy)
     }
 
     private data class DetectionEntry(val timestamp: Long, val pair: RearLightPair)
