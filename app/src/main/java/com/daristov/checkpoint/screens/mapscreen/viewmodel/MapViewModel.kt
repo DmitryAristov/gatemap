@@ -1,5 +1,6 @@
 package com.daristov.checkpoint.screens.mapscreen.viewmodel
 
+import android.content.Context
 import android.location.Location
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -28,6 +29,7 @@ class MapViewModel : ViewModel() {
     private val _location = MutableStateFlow<Location?>(null)
     private val _checkpoints = MutableStateFlow<List<MapObject>>(emptyList())
     private val _nearestCheckpoint = MutableStateFlow<MapObject?>(null)
+    private val _distanceToNearestCheckpoint = MutableStateFlow<Double>(-1.0)
     private val loadedTiles = mutableSetOf<TileKey>()
     private val loadingTiles = mutableSetOf<TileKey>()
     private val pendingTilesQueue = Channel<TileKey>(Channel.Factory.UNLIMITED)
@@ -44,6 +46,7 @@ class MapViewModel : ViewModel() {
     val location: StateFlow<Location?> = _location
     val checkpoints: StateFlow<List<MapObject>> = _checkpoints
     val nearestCheckpoint: StateFlow<MapObject?> = _nearestCheckpoint
+    val distanceToNearestCheckpoint: StateFlow<Double> = _distanceToNearestCheckpoint
 
     fun loadCheckpointsInVisibleArea(bounds: BoundingBox, zoom: Double) {
         if (zoom < MIN_ZOOM_FOR_TILES) {
@@ -97,6 +100,10 @@ class MapViewModel : ViewModel() {
         _nearestCheckpoint.value = nearest
     }
 
+    fun updateDistanceToNearestCheckpoint(distance: Double) {
+        _distanceToNearestCheckpoint.value = distance
+    }
+
     data class TileKey(val x: Int, val y: Int) {
         override fun equals(other: Any?): Boolean {
             return other is TileKey && other.x == x && other.y == y
@@ -127,6 +134,14 @@ class MapViewModel : ViewModel() {
 
     fun sendSurveyAnswer(answer: Int) {
         //TODO: send answer to server
+    }
+
+    fun findAndSetNearestCheckpoint(userPoint: GeoPoint) {
+        val nearestCheckpoint = findNearestCheckpoints(userPoint, 1).first()
+        val cpPoint = GeoPoint(nearestCheckpoint.latitude, nearestCheckpoint.longitude)
+        val distance = userPoint.distanceToAsDouble(cpPoint)
+        updateDistanceToNearestCheckpoint(distance)
+        updateNearestCheckpoint(nearestCheckpoint)
     }
 
 }

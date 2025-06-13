@@ -1,12 +1,14 @@
 package com.daristov.checkpoint.screens.mapscreen
 
 import android.content.Context
+import android.location.Location
 import android.view.ViewTreeObserver
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,7 +24,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -51,16 +52,17 @@ import kotlin.math.sin
 @Composable
 fun MapScreen(navController: NavHostController, viewModel: MapViewModel = viewModel()) {
     val context = LocalContext.current
-    var mapReady = false
-    val mapView = rememberMapViewWithLifecycle()
+    val mapView = rememberConfiguredMapView()
+
     val isMapInitialized = remember { mutableStateOf(false) }
-    var isAnimatedToInitialLocation by remember { mutableStateOf(false) }
-    var isNearestCheckpointFound by remember { mutableStateOf(false) }
-    var isInitialZoomDone by remember { mutableStateOf(false) }
-    var needToShowSurvey by remember { mutableStateOf(false) }
+    val isAnimatedToInitialLocation = remember { mutableStateOf(false) }
+    val isNearestCheckpointFound = remember { mutableStateOf(false) }
+    val isInitialZoomDone = remember { mutableStateOf(false) }
+    val needToShowSurvey = remember { mutableStateOf(false) }
 
     val location by viewModel.location.collectAsState()
     val nearestCheckpoint by viewModel.nearestCheckpoint.collectAsState()
+    val distance by viewModel.distanceToNearestCheckpoint.collectAsState()
 
     Scaffold(
         topBar = {
@@ -74,68 +76,12 @@ fun MapScreen(navController: NavHostController, viewModel: MapViewModel = viewMo
             )
         }
     ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            AndroidView(factory = { mapView.apply {
-                viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
-                    override fun onGlobalLayout() {
-                        if (!isMapInitialized.value) {
-                            isMapInitialized.value = true
-                            viewTreeObserver.removeOnGlobalLayoutListener(this)
-                        }
-                    }
-                })
-            }}, modifier = Modifier
-                .fillMaxSize()
-                .onGloballyPositioned {
-                    mapReady = true
-                })
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(
-                        end = 16.dp,
-                        bottom = 16.dp
-                    ),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                IconButton(
-                    onClick = {
-                        viewModel.location.value?.let {
-                            mapView.controller.animateTo(GeoPoint(it), 18.0, 1000L)
-                            mapView.overlays
-                                .filterIsInstance<CustomLocationOverlay>()
-                                .firstOrNull()
-                                ?.enableFollowLocation()
-                        }
-                    },
-                    modifier = Modifier
-                        .size(56.dp)
-                        .background(
-                            MaterialTheme.colorScheme.background,
-                            shape = RoundedCornerShape(16.dp)
-                        )
-                ) {
-                    Icon(Icons.Default.MyLocation, contentDescription = "Мое местоположение", tint = Color.White)
-                }
-
-                FloatingActionButton(
-                    onClick = { navController.navigate("alarm") }
-                ) {
-                    Icon(Icons.Default.Notifications, contentDescription = "Будильник")
-                }
-            }
-            QueueSurveyManager(
-                isUserInQueue = needToShowSurvey,
-                onAnswer = { minutes ->
-                    viewModel.sendSurveyAnswer(minutes)
-                },
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
-        }
+        MapContainer(mapView = mapView,
+            navController = navController,
+            viewModel = viewModel,
+            padding = padding,
+            needToShowSurvey = needToShowSurvey,
+            isMapInitialized = isMapInitialized)
     }
 
     LaunchedEffect(Unit) {
@@ -151,87 +97,109 @@ fun MapScreen(navController: NavHostController, viewModel: MapViewModel = viewMo
 
     LaunchedEffect(location) {
         location?.let {
-            val point = GeoPoint(it.latitude, it.longitude)
-            val locationOverlay = mapView.overlays.filterIsInstance<CustomLocationOverlay>().firstOrNull()
-            locationOverlay?.updateLocation(it)
-
-            if (!isAnimatedToInitialLocation) {
+            mapView.updateUserLocation(it)
+            if (!isAnimatedToInitialLocation.value) {
+                val point = GeoPoint(it)
                 mapView.controller.animateTo(point)
-                val bbox = point.createBoundingBoxAround(100.0)
-                viewModel.loadCheckpointsInVisibleArea(bbox, mapView.zoomLevelDouble)
-                isAnimatedToInitialLocation = true
-            }
-
-            // === Автовращение карты по направлению движения ===
-            if (locationOverlay?.isFollowLocationEnabled == true && it.speed > 1 && it.hasBearing()) {
-                mapView.mapOrientation = it.bearing
-                mapView.invalidate()
+                viewModel.loadCheckpointsInVisibleArea(point.createBoundingBoxAround(100.0), mapView.zoomLevelDouble)
+                isAnimatedToInitialLocation.value = true
             }
         }
     }
 
     LaunchedEffect(location, checkpoints) {
-        if (isNearestCheckpointFound) return@LaunchedEffect
-        val loc = location ?: return@LaunchedEffect
-        if (checkpoints.isEmpty()) return@LaunchedEffect
-
-        val userPoint = GeoPoint(loc.latitude, loc.longitude)
-        val nearestCheckpoint = viewModel.findNearestCheckpoints(userPoint, 1).firstOrNull()
-
-        if (nearestCheckpoint != null) {
-            val cpPoint = GeoPoint(nearestCheckpoint.latitude, nearestCheckpoint.longitude)
-            val distance = userPoint.distanceToAsDouble(cpPoint)
-
-            viewModel.updateNearestCheckpoint(nearestCheckpoint)
-            isNearestCheckpointFound = true
-            Toast.makeText(
-                mapView.context,
-                "Ближайший КПП: ${nearestCheckpoint.name}, ${"%.0f".format(distance)} м",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
+        if (isNearestCheckpointFound.value || checkpoints.isEmpty()) return@LaunchedEffect
+        val userPoint = location?.let { GeoPoint(it) } ?: return@LaunchedEffect
+        viewModel.findAndSetNearestCheckpoint(userPoint)
+        isNearestCheckpointFound.value = true
     }
 
     LaunchedEffect(location, nearestCheckpoint) {
-        if (isInitialZoomDone) return@LaunchedEffect
-        val loc = location ?: return@LaunchedEffect
-        val nearest = nearestCheckpoint ?: return@LaunchedEffect
-
-        val userPoint = GeoPoint(loc.latitude, loc.longitude)
-        val cpPoint = GeoPoint(nearest.latitude, nearest.longitude)
-        val distance = userPoint.distanceToAsDouble(cpPoint)
-
-        if (distance < 5000) {
-            val heading = computeHeading(userPoint, nearest.location)
-            mapView.mapOrientation = ((heading + 90 + 360) % 360).toFloat()
-            mapView.controller.setZoom(18.0)
-
-            needToShowSurvey = true
-            isInitialZoomDone = true
-            return@LaunchedEffect
-        }
-
-        if (loc.speed > 10) { // ~36 км/ч
-            var nearest: List<MapObject> = viewModel.findNearestCheckpoints(userPoint)
-            mapView.zoomToCheckpoints(userPoint, nearest.map { GeoPoint(it.latitude, it.longitude) })
-
-            isInitialZoomDone = true
-            return@LaunchedEffect
-        }
-
-        mapView.controller.animateTo(userPoint, 18.0, 1000L)
-        mapView.overlays
-            .filterIsInstance<CustomLocationOverlay>()
-            .firstOrNull()
-            ?.enableFollowLocation()
-
-        isInitialZoomDone = true
-        return@LaunchedEffect
+        if (isInitialZoomDone.value || location == null || nearestCheckpoint == null) return@LaunchedEffect
+        mapView.handleInitialZoomAndSurvey(location!!, nearestCheckpoint!!, distance, needToShowSurvey, viewModel)
+        isInitialZoomDone.value = true
     }
 }
 
 @Composable
-fun rememberMapViewWithLifecycle(viewModel: MapViewModel = viewModel()): MapView {
+fun MapContainer(mapView: MapView,
+                 navController: NavHostController,
+                 viewModel: MapViewModel,
+                 padding: PaddingValues,
+                 needToShowSurvey: MutableState<Boolean>,
+                 isMapInitialized: MutableState<Boolean>) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+    ) {
+        AndroidView(
+            factory = {
+                mapView.apply {
+                    viewTreeObserver.addOnGlobalLayoutListener(object :
+                        ViewTreeObserver.OnGlobalLayoutListener {
+                        override fun onGlobalLayout() {
+                            if (!isMapInitialized.value) {
+                                isMapInitialized.value = true
+                                viewTreeObserver.removeOnGlobalLayoutListener(this)
+                            }
+                        }
+                    })
+                }
+            }, modifier = Modifier
+                .fillMaxSize()
+        )
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(
+                    end = 16.dp,
+                    bottom = 16.dp
+                ),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            IconButton(
+                onClick = {
+                    viewModel.location.value?.let {
+                        mapView.controller.animateTo(GeoPoint(it), 18.0, 1000L)
+                        mapView.overlays
+                            .filterIsInstance<CustomLocationOverlay>()
+                            .firstOrNull()
+                            ?.enableFollowLocation()
+                    }
+                },
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(
+                        MaterialTheme.colorScheme.background,
+                        shape = RoundedCornerShape(16.dp)
+                    )
+            ) {
+                Icon(
+                    Icons.Default.MyLocation,
+                    contentDescription = "Мое местоположение",
+                    tint = Color.White
+                )
+            }
+
+            FloatingActionButton(
+                onClick = { navController.navigate("alarm") }
+            ) {
+                Icon(Icons.Default.Notifications, contentDescription = "Будильник")
+            }
+        }
+        QueueSurveyManager(
+            isUserInQueue = needToShowSurvey.value,
+            onAnswer = { minutes ->
+                viewModel.sendSurveyAnswer(minutes)
+            },
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+    }
+}
+
+@Composable
+fun rememberConfiguredMapView(viewModel: MapViewModel = viewModel()): MapView {
     val context = LocalContext.current
     val checkpoints by viewModel.checkpoints.collectAsState()
     val mapView = remember {
@@ -243,31 +211,6 @@ fun rememberMapViewWithLifecycle(viewModel: MapViewModel = viewModel()): MapView
         }
     }
 
-    mapView.addMapListener(object : MapListener {
-        private var lastCheckTime = 0L
-        private val minIntervalMs = 500L
-
-        override fun onScroll(event: ScrollEvent?): Boolean {
-            val now = System.currentTimeMillis()
-            if (now - lastCheckTime < minIntervalMs) return false
-            lastCheckTime = now
-
-            viewModel.loadCheckpointsInVisibleArea(mapView.boundingBox, mapView.zoomLevelDouble)
-            mapView.showCheckpoints(checkpoints, context)
-            return true
-        }
-
-        override fun onZoom(event: ZoomEvent?): Boolean {
-            val now = System.currentTimeMillis()
-            if (now - lastCheckTime < minIntervalMs) return false
-            lastCheckTime = now
-
-            viewModel.loadCheckpointsInVisibleArea(mapView.boundingBox, mapView.zoomLevelDouble)
-            mapView.showCheckpoints(checkpoints, context)
-            return true
-        }
-    })
-
     val locationOverlay = remember {
         CustomLocationOverlay(CustomLocationProvider(), mapView).apply {
             enableMyLocation()
@@ -276,7 +219,39 @@ fun rememberMapViewWithLifecycle(viewModel: MapViewModel = viewModel()): MapView
     mapView.overlays.add(locationOverlay)
     mapView.overlays.add(CustomRotationOverlay(mapView))
 
+    mapView.setupInteractionListeners(viewModel, context, checkpoints)
     return mapView
+}
+
+private fun MapView.setupInteractionListeners(
+    viewModel: MapViewModel,
+    context: Context,
+    checkpoints: List<MapObject>
+) {
+    val minIntervalMs = 500L
+    var lastCheckTime = 0L
+
+    this.addMapListener(object : MapListener {
+        override fun onScroll(event: ScrollEvent?): Boolean {
+            val now = System.currentTimeMillis()
+            if (now - lastCheckTime < minIntervalMs) return false
+            lastCheckTime = now
+
+            viewModel.loadCheckpointsInVisibleArea(boundingBox, zoomLevelDouble)
+            showCheckpoints(checkpoints, context)
+            return true
+        }
+
+        override fun onZoom(event: ZoomEvent?): Boolean {
+            val now = System.currentTimeMillis()
+            if (now - lastCheckTime < minIntervalMs) return false
+            lastCheckTime = now
+
+            viewModel.loadCheckpointsInVisibleArea(boundingBox, zoomLevelDouble)
+            showCheckpoints(checkpoints, context)
+            return true
+        }
+    })
 }
 
 @Composable
@@ -429,4 +404,44 @@ fun BoundingBox.increaseByMargin(marginFraction: Double): BoundingBox {
         this.latSouth - latMargin,
         this.lonWest - lonMargin
     )
+}
+
+private fun MapView.updateUserLocation(location: Location) {
+    location.let {
+        val locationOverlay = this.overlays.filterIsInstance<CustomLocationOverlay>().firstOrNull()
+        locationOverlay?.updateLocation(it)
+        if (locationOverlay?.isFollowLocationEnabled == true && it.speed > 1 && it.hasBearing()) {
+            this.mapOrientation = it.bearing
+            this.invalidate()
+        }
+    }
+}
+
+private fun MapView.handleInitialZoomAndSurvey(
+    location: Location,
+    nearestCheckpoint: MapObject,
+    distance: Double,
+    needToShowSurvey: MutableState<Boolean>,
+    viewModel: MapViewModel
+) {
+    val userPoint = GeoPoint(location)
+    if (distance < 5000) {
+        val heading = computeHeading(userPoint, nearestCheckpoint.location)
+        this.mapOrientation = ((heading + 90 + 360) % 360).toFloat()
+        this.controller.setZoom(18.0)
+        needToShowSurvey.value = true
+        return
+    }
+
+    if (location.speed > 10) { // ~36 км/ч
+        var nearest: List<MapObject> = viewModel.findNearestCheckpoints(userPoint)
+        this.zoomToCheckpoints(userPoint, nearest.map { GeoPoint(it.latitude, it.longitude) })
+        return
+    }
+
+    this.controller.animateTo(userPoint, 18.0, 1000L)
+    this.overlays
+        .filterIsInstance<CustomLocationOverlay>()
+        .firstOrNull()
+        ?.enableFollowLocation()
 }
