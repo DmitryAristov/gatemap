@@ -1,6 +1,7 @@
 package com.daristov.checkpoint.screens.alarm
 
 import android.app.Application
+import android.graphics.drawable.Drawable
 import android.hardware.camera2.CameraMetadata
 import android.hardware.camera2.CaptureRequest
 import androidx.annotation.OptIn
@@ -14,6 +15,7 @@ import androidx.camera.view.PreviewView
 import androidx.camera.view.PreviewView.ScaleType.FIT_CENTER
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,6 +45,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -71,8 +75,8 @@ fun AlarmScreen(navController: NavHostController) {
         modifier = Modifier
             .fillMaxSize()
             .padding(top = statusBarPadding, bottom = navBarPadding)
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        // Камера
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -99,8 +103,9 @@ fun AlarmScreen(navController: NavHostController) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .defaultMinSize(minHeight = 100.dp)
-                .background(Color.Black)
+                .defaultMinSize(minHeight = 150.dp)
+                .background(MaterialTheme.colorScheme.background)
+                .border(1.dp, MaterialTheme.colorScheme.onBackground)
                 .padding(16.dp)
         ) {
             Row(
@@ -110,16 +115,14 @@ fun AlarmScreen(navController: NavHostController) {
             ) {
                 Text(
                     text = if (state.motionDetected) "🚨 Обнаружено движение!" else "🟢 Ожидает",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onBackground,
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
                     text = if (state.isNight == true) "🌙 Ночь" else "☀️ День",
+                    color = MaterialTheme.colorScheme.onBackground,
                     style = MaterialTheme.typography.bodyLarge.copy(color = Color.White)
                 )
-                Button(onClick = { navController.navigate("map") }) {
-                    Text("Назад")
-                }
             }
         }
     }
@@ -133,15 +136,21 @@ fun CameraPreview(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val backgroundColor = MaterialTheme.colorScheme.background.toArgb()
     val previewView = remember {
         PreviewView(context).apply {
             scaleType = FIT_CENTER
+            setBackgroundColor(backgroundColor)
+            setOnApplyWindowInsetsListener { v, insets ->
+                v.onApplyWindowInsets(insets)
+            }
         }
     }
 
     AndroidView(
         factory = { previewView },
         modifier = modifier
+            .background(MaterialTheme.colorScheme.background)
     )
 
     LaunchedEffect(Unit) {
@@ -213,7 +222,7 @@ fun DrawRearLightsOverlay(
     rects: RearLightsDetector.RearLightPair,
     bitmapWidth: Int,
     bitmapHeight: Int,
-    color: Color = Color.Green,
+    color: Color = Color.Red,
     strokeWidth: Float = 12f
 ) {
     Canvas(modifier = Modifier.fillMaxSize()) {

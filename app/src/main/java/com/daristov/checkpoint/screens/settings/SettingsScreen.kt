@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,9 +57,15 @@ fun SettingsScreen(
                 onClick = { navController.navigate("map") },
                 modifier = Modifier.size(iconSizeDp)
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    contentDescription = "Назад"
+                )
             }
-            Text("Назад", style = MaterialTheme.typography.titleLarge)
+            Text("Назад",
+                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.titleLarge
+            )
         }
 
         // 🔹 Прокручиваемый контент
@@ -123,17 +130,27 @@ fun ThemeSelector(viewModel: SettingsViewModel) {
 
     Text(
         "Тема приложения",
+        color = MaterialTheme.colorScheme.onBackground,
         style = MaterialTheme.typography.titleMedium
     )
     Row(verticalAlignment = Alignment.CenterVertically) {
         RadioButton(selected = current == AppThemeMode.LIGHT, onClick = { viewModel.changeTheme(AppThemeMode.LIGHT) })
-        Text("Светлая", modifier = Modifier.padding(end = 8.dp))
+        Text("Светлая",
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(end = 8.dp)
+        )
 
         RadioButton(selected = current == AppThemeMode.DARK, onClick = { viewModel.changeTheme(AppThemeMode.DARK) })
-        Text("Тёмная", modifier = Modifier.padding(end = 8.dp))
+        Text("Тёмная",
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(end = 8.dp)
+        )
 
         RadioButton(selected = current == AppThemeMode.SYSTEM, onClick = { viewModel.changeTheme(AppThemeMode.SYSTEM) })
-        Text("Система", modifier = Modifier.padding(end = 8.dp))
+        Text("Система",
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(end = 8.dp)
+        )
     }
 }
 
@@ -168,7 +185,10 @@ fun HorizontalCompressionSensitivitySlider(viewModel: SettingsViewModel) {
         .fillMaxWidth()
         .padding(horizontal = 16.dp, vertical = 12.dp)) {
 
-        Text("Насколько машина должна сместиться вверх чтобы сработал будильник?", style = MaterialTheme.typography.titleMedium)
+        Text("Насколько машина должна сместиться вверх чтобы сработал будильник?",
+            color = MaterialTheme.colorScheme.onBackground,
+            style = MaterialTheme.typography.titleMedium
+        )
 
         Slider(
             value = sensitivity.toFloat(),
@@ -182,7 +202,9 @@ fun HorizontalCompressionSensitivitySlider(viewModel: SettingsViewModel) {
             else -> "Сильно"
         }
 
-        Text("Текущее значение: $sensitivity ($label)")
+        Text("Текущее значение: $sensitivity ($label)",
+                color = MaterialTheme.colorScheme.onBackground
+        )
     }
 }
 
@@ -194,7 +216,10 @@ fun VerticalMovementSensitivitySlider(viewModel: SettingsViewModel) {
         .fillMaxWidth()
         .padding(horizontal = 16.dp, vertical = 12.dp)) {
 
-        Text("Насколько должна уменьшиться машина чтобы сработал будильник?", style = MaterialTheme.typography.titleMedium)
+        Text("Насколько должна уменьшиться машина чтобы сработал будильник?",
+            color = MaterialTheme.colorScheme.onBackground,
+            style = MaterialTheme.typography.titleMedium
+        )
 
         Slider(
             value = sensitivity.toFloat(),
@@ -208,7 +233,9 @@ fun VerticalMovementSensitivitySlider(viewModel: SettingsViewModel) {
             else -> "Сильно"
         }
 
-        Text("Текущее значение: $sensitivity ($label)")
+        Text("Текущее значение: $sensitivity ($label)",
+            color = MaterialTheme.colorScheme.onBackground
+            )
     }
 }
 
@@ -220,7 +247,10 @@ fun StableTrajectorySensitivitySlider(viewModel: SettingsViewModel) {
         .fillMaxWidth()
         .padding(horizontal = 16.dp, vertical = 12.dp)) {
 
-        Text("Насколько стабильным должно быть движение машины?", style = MaterialTheme.typography.titleMedium)
+        Text("Насколько стабильным должно быть движение машины?",
+            color = MaterialTheme.colorScheme.onBackground,
+            style = MaterialTheme.typography.titleMedium
+        )
 
         Slider(
             value = sensitivity.toFloat(),
@@ -234,7 +264,9 @@ fun StableTrajectorySensitivitySlider(viewModel: SettingsViewModel) {
             else -> "Высокая"
         }
 
-        Text("Текущий уровень: $sensitivity ($label)")
+        Text("Текущий уровень: $sensitivity ($label)",
+            color = MaterialTheme.colorScheme.onBackground,
+            )
     }
 }
 
@@ -275,7 +307,7 @@ fun LanguageDropdown(viewModel: SettingsViewModel) {
                 value = labels[currentLang] ?: "",
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Язык интерфейса") },
+                label = { Text("Язык интерфейса", color = MaterialTheme.colorScheme.onBackground) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 modifier = Modifier
                     .menuAnchor()
@@ -289,11 +321,12 @@ fun LanguageDropdown(viewModel: SettingsViewModel) {
             ExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.background)
             ) {
                 options.forEach { lang ->
                     DropdownMenuItem(
-                        text = { Text(labels[lang] ?: "") },
+                        text = { Text(labels[lang] ?: "", color = MaterialTheme.colorScheme.onBackground) },
                         onClick = {
                             viewModel.changeLanguage(lang)
                             expanded = false
@@ -329,8 +362,9 @@ fun SettingItem(
         )
         Text(
             text = text,
+            color = MaterialTheme.colorScheme.onBackground,
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f) // ← это вытягивает текст на всё оставшееся место
+            modifier = Modifier.weight(1f)
         )
     }
 }

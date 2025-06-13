@@ -35,7 +35,7 @@ class LocationService : LifecycleService() {
     }
 
     private fun startLocationUpdates() {
-        val intervalMills = 5 * 1000L
+        val intervalMills = 1 * 1000L
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, intervalMills).build()
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&

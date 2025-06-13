@@ -3,6 +3,9 @@ package com.daristov.checkpoint.screens.mapscreen.viewmodel
 import android.content.Context
 import android.location.Location
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.daristov.checkpoint.screens.mapscreen.MapObject
@@ -47,6 +50,7 @@ class MapViewModel : ViewModel() {
     val checkpoints: StateFlow<List<MapObject>> = _checkpoints
     val nearestCheckpoint: StateFlow<MapObject?> = _nearestCheckpoint
     val distanceToNearestCheckpoint: StateFlow<Double> = _distanceToNearestCheckpoint
+    val isFollowUserLocation = MutableStateFlow(false)
 
     fun loadCheckpointsInVisibleArea(bounds: BoundingBox, zoom: Double) {
         if (zoom < MIN_ZOOM_FOR_TILES) {
@@ -144,4 +148,11 @@ class MapViewModel : ViewModel() {
         updateNearestCheckpoint(nearestCheckpoint)
     }
 
+    fun enableFollow() {
+        isFollowUserLocation.value = true
+    }
+
+    fun disableFollow() {
+        isFollowUserLocation.value = false
+    }
 }

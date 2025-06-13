@@ -1,16 +1,15 @@
 package com.daristov.checkpoint.screens.mapscreen.overlay
 
 import android.view.MotionEvent
+import com.daristov.checkpoint.screens.mapscreen.viewmodel.MapViewModel
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Overlay
 import kotlin.math.atan2
 import kotlin.math.hypot
 
-class CustomRotationOverlay(
-    private val mapView: MapView,
-    private val zoomSensitivity: Double = 0.002
-) : Overlay() {
+class CustomRotationOverlay(private val viewModel: MapViewModel) : Overlay() {
 
+    private val zoomSensitivity: Double = 0.002
     private var active = false
     private var startAngle = 0.0
     private var startDistance = 0.0
@@ -18,12 +17,8 @@ class CustomRotationOverlay(
     private var initialZoom = 0.0
 
     override fun onTouchEvent(event: MotionEvent, mapView: MapView): Boolean {
+        viewModel.disableFollow()
         if (event.pointerCount != 2) return false
-
-        mapView.overlays
-            .filterIsInstance<CustomLocationOverlay>()
-            .firstOrNull()
-            ?.disableFollowLocation()
 
         when (event.actionMasked) {
             MotionEvent.ACTION_POINTER_DOWN -> {
@@ -70,18 +65,6 @@ class CustomRotationOverlay(
         val dx = (event.getX(1) - event.getX(0)).toDouble()
         val dy = (event.getY(1) - event.getY(0)).toDouble()
         return hypot(dx, dy)
-    }
-
-    private var lastRotationTime = 0L
-
-    private fun shouldUpdateRotation(): Boolean {
-        val now = System.nanoTime()
-        return if (now - lastRotationTime > 20000000) { // ограничим до ~60fps (1000/60 ≈ 16ms)
-            lastRotationTime = now
-            true
-        } else {
-            false
-        }
     }
 }
 

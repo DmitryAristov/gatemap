@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -65,12 +67,19 @@ fun PermissionsScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("Для работы приложения требуется доступ к камере и местоположению.")
+            Text(
+                "Для работы приложения требуется доступ к камере и местоположению.",
+                color = MaterialTheme.colorScheme.onBackground
+            )
             Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = {
-                permissionLauncher.launch(permissions.toTypedArray())
-            }) {
-                Text("Предоставить доступ")
+            Button(
+                onClick = { permissionLauncher.launch(permissions.toTypedArray()) },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                Text("Предоставить доступ", color = MaterialTheme.colorScheme.onBackground)
             }
         }
     }

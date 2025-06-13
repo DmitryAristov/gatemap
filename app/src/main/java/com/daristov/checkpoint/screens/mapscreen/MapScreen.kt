@@ -2,6 +2,7 @@ package com.daristov.checkpoint.screens.mapscreen
 
 import android.content.Context
 import android.location.Location
+import android.util.Log
 import android.view.ViewTreeObserver
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -23,7 +24,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -35,7 +35,16 @@ import com.daristov.checkpoint.screens.mapscreen.overlay.CustomLocationOverlay
 import com.daristov.checkpoint.screens.mapscreen.overlay.CustomLocationProvider
 import com.daristov.checkpoint.screens.mapscreen.overlay.CustomRotationOverlay
 import com.daristov.checkpoint.screens.mapscreen.viewmodel.MapViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
@@ -67,10 +76,15 @@ fun MapScreen(navController: NavHostController, viewModel: MapViewModel = viewMo
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Очереди на КПП") },
+                title = {
+                    Text("Очереди на КПП", color = MaterialTheme.colorScheme.onBackground)
+                        },
                 actions = {
                     IconButton(onClick = { navController.navigate("settings") }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Настройки")
+                        Icon(imageVector = Icons.Default.Settings,
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            contentDescription = "Настройки"
+                        )
                     }
                 }
             )
@@ -133,6 +147,14 @@ fun MapContainer(mapView: MapView,
             .fillMaxSize()
             .padding(padding)
     ) {
+        LaunchedEffect(Unit) {
+            startSmoothFollowCamera(
+                mapView = mapView,
+                locationFlow = viewModel.location,
+                isFollowFlow = viewModel.isFollowUserLocation
+            )
+        }
+
         AndroidView(
             factory = {
                 mapView.apply {
@@ -158,34 +180,29 @@ fun MapContainer(mapView: MapView,
                 ),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            IconButton(
-                onClick = {
+            IconButton(onClick = {
                     viewModel.location.value?.let {
                         mapView.controller.animateTo(GeoPoint(it), 18.0, 1000L)
-                        mapView.overlays
-                            .filterIsInstance<CustomLocationOverlay>()
-                            .firstOrNull()
-                            ?.enableFollowLocation()
+                        viewModel.enableFollow()
                     }
                 },
                 modifier = Modifier
                     .size(56.dp)
-                    .background(
-                        MaterialTheme.colorScheme.background,
-                        shape = RoundedCornerShape(16.dp)
-                    )
+                    .background(MaterialTheme.colorScheme.background, RoundedCornerShape(16.dp))
             ) {
-                Icon(
-                    Icons.Default.MyLocation,
+                Icon(imageVector = Icons.Default.MyLocation,
+                    tint = MaterialTheme.colorScheme.onSurface,
                     contentDescription = "Мое местоположение",
-                    tint = Color.White
                 )
             }
 
             FloatingActionButton(
                 onClick = { navController.navigate("alarm") }
             ) {
-                Icon(Icons.Default.Notifications, contentDescription = "Будильник")
+                Icon(imageVector = Icons.Default.Notifications,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    contentDescription = "Будильник"
+                )
             }
         }
         QueueSurveyManager(
@@ -205,7 +222,7 @@ fun rememberConfiguredMapView(viewModel: MapViewModel = viewModel()): MapView {
     val mapView = remember {
         MapView(context).apply {
             id = R.id.map
-            setTileSource(TileSourceFactory.DEFAULT_TILE_SOURCE)
+            setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(false)
             controller.setZoom(10.0)
         }
@@ -216,8 +233,11 @@ fun rememberConfiguredMapView(viewModel: MapViewModel = viewModel()): MapView {
             enableMyLocation()
         }
     }
+    val rotationOverlay = remember {
+        CustomRotationOverlay(viewModel)
+    }
     mapView.overlays.add(locationOverlay)
-    mapView.overlays.add(CustomRotationOverlay(mapView))
+    mapView.overlays.add(rotationOverlay)
 
     mapView.setupInteractionListeners(viewModel, context, checkpoints)
     return mapView
@@ -273,19 +293,24 @@ fun SurveyPanel(
             .padding(12.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Подскажите пожалуйста сколько примерно сейчас в очереди машин?")
+            Text("Подскажите пожалуйста сколько примерно сейчас в очереди машин?",
+                color = MaterialTheme.colorScheme.onBackground
+            )
             for (i in options.indices) {
                 val value = options[i]
-                Button(
-                    onClick = { onAnswer(value) },
+                Button(onClick = { onAnswer(value) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.onBackground)
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     if (i != options.lastIndex)
-                        Text("$value – ${options[i + 1]}", color = MaterialTheme.colorScheme.background)
+                        Text("$value – ${options[i + 1]}",
+                            color = MaterialTheme.colorScheme.onBackground)
                     else
-                        Text("> $value", color = MaterialTheme.colorScheme.background)
+                        Text("> $value",
+                            color = MaterialTheme.colorScheme.onBackground)
                 }
             }
         }
@@ -410,10 +435,6 @@ private fun MapView.updateUserLocation(location: Location) {
     location.let {
         val locationOverlay = this.overlays.filterIsInstance<CustomLocationOverlay>().firstOrNull()
         locationOverlay?.updateLocation(it)
-        if (locationOverlay?.isFollowLocationEnabled == true && it.speed > 1 && it.hasBearing()) {
-            this.mapOrientation = it.bearing
-            this.invalidate()
-        }
     }
 }
 
@@ -440,8 +461,67 @@ private fun MapView.handleInitialZoomAndSurvey(
     }
 
     this.controller.animateTo(userPoint, 18.0, 1000L)
-    this.overlays
-        .filterIsInstance<CustomLocationOverlay>()
-        .firstOrNull()
-        ?.enableFollowLocation()
+    viewModel.enableFollow()
 }
+
+fun CoroutineScope.startSmoothFollowCamera(
+    mapView: MapView,
+    locationFlow: StateFlow<Location?>,
+    isFollowFlow: StateFlow<Boolean>
+) {
+    var lastGeoPoint: GeoPoint? = null
+    var currentJob: Job? = null
+
+    launch {
+        combine(locationFlow, isFollowFlow) { loc, follow -> loc to follow }
+            .filter { (loc, follow) -> loc != null && follow }
+            .collect { (location, _) ->
+                val newGeoPoint = GeoPoint(location!!.latitude, location.longitude)
+                val bearing = (360 - location.bearing) % 360
+
+                // Прервать текущую анимацию, если есть
+                currentJob?.cancel()
+
+                // Первый кадр или слишком далеко — прыжок
+                if (lastGeoPoint == null || lastGeoPoint!!.distanceToAsDouble(newGeoPoint) > 100) {
+                    mapView.controller.setCenter(newGeoPoint)
+                    mapView.mapOrientation = bearing
+                    mapView.invalidate()
+                    lastGeoPoint = newGeoPoint
+                    return@collect
+                }
+
+                // Интерполяция позиции
+                val startPoint = lastGeoPoint!!
+                val durationMs = 1000L
+                val steps = 30
+                val stepDelay = durationMs / steps
+
+                currentJob = launch {
+                    for (i in 1..steps) {
+                        val t = i / steps.toDouble()
+                        val lat = lerp(startPoint.latitude, newGeoPoint.latitude, t)
+                        val lon = lerp(startPoint.longitude, newGeoPoint.longitude, t)
+                        val interpPoint = GeoPoint(lat, lon)
+
+                        withContext(Dispatchers.Main) {
+                            mapView.controller.setCenter(interpPoint)
+                            mapView.mapOrientation = bearing
+                            mapView.invalidate()
+                        }
+
+                        delay(stepDelay)
+                    }
+
+                    lastGeoPoint = newGeoPoint
+                }
+            }
+    }
+}
+
+private fun lerp(a: Double, b: Double, t: Double): Double {
+    return a + (b - a) * t
+}
+
+
+
