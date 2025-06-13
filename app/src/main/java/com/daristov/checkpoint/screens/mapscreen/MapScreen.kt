@@ -198,9 +198,9 @@ fun MapScreen(navController: NavHostController, viewModel: MapViewModel = viewMo
         }
 
         if (loc.speed > 10) {
-
+            //TODO
         } else {
-
+            //TODO
         }
     }
 }
