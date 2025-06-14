@@ -1,6 +1,7 @@
 package com.daristov.checkpoint.ui.theme
 
 import android.app.Activity
+import android.content.Context
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -9,7 +10,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.daristov.checkpoint.screens.settings.AppThemeMode
+import com.daristov.checkpoint.screens.settings.dataStore
+import kotlinx.coroutines.flow.first
 
 private val LightColors = lightColorScheme(
     primary = LightPrimary,
@@ -62,5 +66,16 @@ fun ApplySystemBarColors(
         }
         window.statusBarColor = statusBarColor.toArgb()
         window.navigationBarColor = navigationBarColor.toArgb()
+    }
+}
+
+suspend fun Context.getSavedThemeMode(): AppThemeMode {
+
+    val preferences = dataStore.data.first()
+    return when (preferences[stringPreferencesKey("theme_mode")]) {
+        "light" -> AppThemeMode.LIGHT
+        "dark" -> AppThemeMode.DARK
+        "system" -> AppThemeMode.SYSTEM
+        else -> AppThemeMode.SYSTEM
     }
 }

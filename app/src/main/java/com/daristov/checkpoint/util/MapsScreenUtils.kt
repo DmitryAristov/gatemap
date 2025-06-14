@@ -8,6 +8,7 @@ import androidx.core.content.ContextCompat
 import com.daristov.checkpoint.R
 import com.daristov.checkpoint.screens.mapscreen.domain.MapObject
 import com.daristov.checkpoint.screens.mapscreen.viewmodel.MapViewModel
+import com.daristov.checkpoint.screens.settings.AppThemeMode
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
@@ -49,7 +50,8 @@ object MapsScreenUtils {
     fun MapView.setupInteractionListeners(
         viewModel: MapViewModel,
         context: Context,
-        customs: List<MapObject>
+        customs: List<MapObject>,
+        theme: AppThemeMode
     ) {
         val minIntervalMs = 500L
         var lastCheckTime = 0L
@@ -61,7 +63,7 @@ object MapsScreenUtils {
                 lastCheckTime = now
 
                 viewModel.loadCustomsInVisibleArea(boundingBox, zoomLevelDouble)
-                showCustoms(customs, context)
+                showCustoms(customs, context, theme)
                 return true
             }
 
@@ -71,13 +73,13 @@ object MapsScreenUtils {
                 lastCheckTime = now
 
                 viewModel.loadCustomsInVisibleArea(boundingBox, zoomLevelDouble)
-                showCustoms(customs, context)
+                showCustoms(customs, context, theme)
                 return true
             }
         })
     }
 
-    fun MapView.showCustoms(customs: List<MapObject>, context: Context) {
+    fun MapView.showCustoms(customs: List<MapObject>, context: Context, theme: AppThemeMode) {
         val visibleBox = this.boundingBox
         overlays.removeAll { it is Marker }
 
@@ -88,8 +90,13 @@ object MapsScreenUtils {
                     position = point
                     title = custom.name
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-//                  Icons.Default.AssuredWorkload
-                    icon = ContextCompat.getDrawable(context, R.drawable.ic_custom) // или стандартная иконка
+                    icon = ContextCompat.getDrawable(
+                        context,
+                        if (theme == AppThemeMode.DARK)
+                            R.drawable.ic_custom_dark
+                        else
+                            R.drawable.ic_custom_light
+                    )
                     isDraggable = false
                     setOnMarkerClickListener { marker, _ ->
                         //TODO
@@ -108,8 +115,8 @@ object MapsScreenUtils {
         userPoint: GeoPoint, nearest: List<GeoPoint>
     ) {
         val bounds = BoundingBox.fromGeoPointsSafe(nearest + userPoint).increaseByMargin(0.1) // 10% запас
-//        val target = nearest.first()
-//        mapOrientation = ((computeHeading(userPoint, target) + 90 + 360) % 360).toFloat()
+        val target = nearest.first()
+        mapOrientation = ((computeHeading(userPoint, target) + 90 + 360) % 360).toFloat()
         this.zoomToBoundingBox(bounds, true)
     }
 

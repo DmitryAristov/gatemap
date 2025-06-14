@@ -30,6 +30,7 @@ import com.daristov.checkpoint.R
 import com.daristov.checkpoint.screens.mapscreen.overlay.CustomLocationOverlay
 import com.daristov.checkpoint.screens.mapscreen.overlay.CustomRotationOverlay
 import com.daristov.checkpoint.screens.mapscreen.viewmodel.MapViewModel
+import com.daristov.checkpoint.screens.settings.SettingsViewModel
 import com.daristov.checkpoint.util.MapsScreenUtils.createBoundingBoxAround
 import com.daristov.checkpoint.util.MapsScreenUtils.handleInitialZoomAndSurvey
 import com.daristov.checkpoint.util.MapsScreenUtils.setupInteractionListeners
@@ -42,7 +43,9 @@ import org.osmdroid.views.MapView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapScreen(navController: NavHostController, viewModel: MapViewModel = viewModel()) {
+fun MapScreen(navController: NavHostController,
+              viewModel: MapViewModel = viewModel(),
+              settingsViewModel: SettingsViewModel = viewModel()) {
     val context = LocalContext.current
     val mapView = rememberConfiguredMapView()
 
@@ -87,9 +90,10 @@ fun MapScreen(navController: NavHostController, viewModel: MapViewModel = viewMo
     }
 
     val customs by viewModel.customs.collectAsState()
+    val theme by settingsViewModel.themeMode.collectAsState()
     LaunchedEffect(customs, isMapInitialized) {
         if (isMapInitialized.value && customs.isNotEmpty()) {
-            mapView.showCustoms(customs, context)
+            mapView.showCustoms(customs, context, theme)
         }
     }
 
@@ -207,9 +211,12 @@ fun MapContainer(mapView: MapView,
 }
 
 @Composable
-fun rememberConfiguredMapView(viewModel: MapViewModel = viewModel()): MapView {
+fun rememberConfiguredMapView(viewModel: MapViewModel = viewModel(),
+                              settingsViewModel: SettingsViewModel = viewModel()
+): MapView {
     val context = LocalContext.current
     val customs by viewModel.customs.collectAsState()
+    val theme by settingsViewModel.themeMode.collectAsState()
     val mapView = remember {
         MapView(context).apply {
             id = R.id.map
@@ -231,7 +238,7 @@ fun rememberConfiguredMapView(viewModel: MapViewModel = viewModel()): MapView {
     mapView.overlays.add(locationOverlay)
     mapView.overlays.add(rotationOverlay)
 
-    mapView.setupInteractionListeners(viewModel, context, customs)
+    mapView.setupInteractionListeners(viewModel, context, customs, theme)
     return mapView
 }
 
