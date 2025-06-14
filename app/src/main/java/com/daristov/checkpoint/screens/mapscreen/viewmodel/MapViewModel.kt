@@ -1,14 +1,10 @@
 package com.daristov.checkpoint.screens.mapscreen.viewmodel
 
-import android.content.Context
 import android.location.Location
 import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.daristov.checkpoint.screens.mapscreen.MapObject
+import com.daristov.checkpoint.screens.mapscreen.domain.MapObject
 import com.daristov.checkpoint.service.LocationProvider
 import com.daristov.checkpoint.service.OverpassAPI
 import kotlinx.coroutines.channels.Channel
@@ -30,9 +26,9 @@ class MapViewModel : ViewModel() {
 
     private val overpassAPI: OverpassAPI = OverpassAPI()
     private val _location = MutableStateFlow<Location?>(null)
-    private val _checkpoints = MutableStateFlow<List<MapObject>>(emptyList())
-    private val _nearestCheckpoint = MutableStateFlow<MapObject?>(null)
-    private val _distanceToNearestCheckpoint = MutableStateFlow<Double>(-1.0)
+    private val _customs = MutableStateFlow<List<MapObject>>(emptyList())
+    private val _nearestCustom = MutableStateFlow<MapObject?>(null)
+    private val _distanceToNearestCustom = MutableStateFlow<Double>(-1.0)
     private val loadedTiles = mutableSetOf<TileKey>()
     private val loadingTiles = mutableSetOf<TileKey>()
     private val pendingTilesQueue = Channel<TileKey>(Channel.Factory.UNLIMITED)
@@ -47,12 +43,12 @@ class MapViewModel : ViewModel() {
     }
 
     val location: StateFlow<Location?> = _location
-    val checkpoints: StateFlow<List<MapObject>> = _checkpoints
-    val nearestCheckpoint: StateFlow<MapObject?> = _nearestCheckpoint
-    val distanceToNearestCheckpoint: StateFlow<Double> = _distanceToNearestCheckpoint
+    val customs: StateFlow<List<MapObject>> = _customs
+    val nearestCustom: StateFlow<MapObject?> = _nearestCustom
+    val distanceToNearestCustom: StateFlow<Double> = _distanceToNearestCustom
     val isFollowUserLocation = MutableStateFlow(false)
 
-    fun loadCheckpointsInVisibleArea(bounds: BoundingBox, zoom: Double) {
+    fun loadCustomsInVisibleArea(bounds: BoundingBox, zoom: Double) {
         if (zoom < MIN_ZOOM_FOR_TILES) {
             return
         }
@@ -74,7 +70,7 @@ class MapViewModel : ViewModel() {
                 delay(TILE_REQUEST_DELAY_MS)
                 try {
                     val result = overpassAPI.loadTile(tile)
-                    _checkpoints.update { it + result }
+                    _customs.update { it + result }
                     loadedTiles.add(tile)
                 } catch (e: Exception) {
                     Log.e("MapViewModel", "Error loading tile $tile", e)
@@ -100,12 +96,12 @@ class MapViewModel : ViewModel() {
         }
     }
 
-    fun updateNearestCheckpoint(nearest: MapObject) {
-        _nearestCheckpoint.value = nearest
+    fun updateNearestCustom(nearest: MapObject) {
+        _nearestCustom.value = nearest
     }
 
-    fun updateDistanceToNearestCheckpoint(distance: Double) {
-        _distanceToNearestCheckpoint.value = distance
+    fun updateDistanceToNearestCustom(distance: Double) {
+        _distanceToNearestCustom.value = distance
     }
 
     data class TileKey(val x: Int, val y: Int) {
@@ -118,11 +114,11 @@ class MapViewModel : ViewModel() {
         }
     }
 
-    fun findNearestCheckpoints(
+    fun findNearestCustoms(
         from: GeoPoint,
         count: Int = 4
     ): List<MapObject> {
-        return checkpoints.value
+        return customs.value
             .sortedBy { it.location.distanceToAsDouble(from) }
             .take(count)
     }
@@ -140,12 +136,12 @@ class MapViewModel : ViewModel() {
         //TODO: send answer to server
     }
 
-    fun findAndSetNearestCheckpoint(userPoint: GeoPoint) {
-        val nearestCheckpoint = findNearestCheckpoints(userPoint, 1).first()
-        val cpPoint = GeoPoint(nearestCheckpoint.latitude, nearestCheckpoint.longitude)
+    fun findAndSetNearestCustom(userPoint: GeoPoint) {
+        val nearestCustom = findNearestCustoms(userPoint, 1).first()
+        val cpPoint = GeoPoint(nearestCustom.latitude, nearestCustom.longitude)
         val distance = userPoint.distanceToAsDouble(cpPoint)
-        updateDistanceToNearestCheckpoint(distance)
-        updateNearestCheckpoint(nearestCheckpoint)
+        updateDistanceToNearestCustom(distance)
+        updateNearestCustom(nearestCustom)
     }
 
     fun enableFollow() {

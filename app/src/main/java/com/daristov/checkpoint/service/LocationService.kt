@@ -71,7 +71,7 @@ class LocationService : LifecycleService() {
         }
 
         return NotificationCompat.Builder(this, channelId)
-            .setContentTitle("Checkpoint")
+            .setContentTitle("Custom")
             .setContentText("Приложение определяет ваше местоположение")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)

@@ -19,7 +19,7 @@ import androidx.navigation.NavHostController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CheckpointListScreen(navController: NavHostController) {
+fun CustomsListScreen(navController: NavHostController) {
     Scaffold(topBar = {
         TopAppBar(title = { Text("Список КПП") },
             navigationIcon = {

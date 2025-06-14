@@ -17,7 +17,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.daristov.checkpoint.screens.AboutScreen
 import com.daristov.checkpoint.screens.alarm.AlarmScreen
-import com.daristov.checkpoint.screens.CheckpointListScreen
+import com.daristov.checkpoint.screens.CustomsListScreen
 import com.daristov.checkpoint.screens.mapscreen.MapScreen
 import com.daristov.checkpoint.screens.PermissionsScreen
 import com.daristov.checkpoint.screens.settings.SettingsScreen
@@ -50,7 +50,7 @@ fun App() {
         NavHost(navController = navController, startDestination = "map") {
             composable("map") { MapScreen(navController) }
             composable("alarm") { AlarmScreen(navController) }
-            composable("checkpoints") { CheckpointListScreen(navController) }
+            composable("customs") { CustomsListScreen(navController) }
             composable("settings") { SettingsScreen(navController) }
             composable("about") { AboutScreen(navController) }
         }

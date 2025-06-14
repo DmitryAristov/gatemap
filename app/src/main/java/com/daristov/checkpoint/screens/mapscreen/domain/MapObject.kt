@@ -1,4 +1,4 @@
-package com.daristov.checkpoint.screens.mapscreen
+package com.daristov.checkpoint.screens.mapscreen.domain
 
 import org.osmdroid.util.GeoPoint
 
@@ -13,5 +13,5 @@ data class MapObject(
 }
 
 enum class ObjectType {
-    CHECKPOINT
+    CUSTOMS
 }

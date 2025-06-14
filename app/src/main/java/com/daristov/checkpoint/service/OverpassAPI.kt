@@ -1,8 +1,8 @@
 package com.daristov.checkpoint.service
 
 import android.util.Log
-import com.daristov.checkpoint.screens.mapscreen.MapObject
-import com.daristov.checkpoint.screens.mapscreen.ObjectType
+import com.daristov.checkpoint.screens.mapscreen.domain.MapObject
+import com.daristov.checkpoint.screens.mapscreen.domain.ObjectType
 import com.daristov.checkpoint.screens.mapscreen.viewmodel.MapViewModel.TileKey
 import com.daristov.checkpoint.screens.mapscreen.viewmodel.TILE_SIZE_DEGREES
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +30,7 @@ class OverpassAPI {
             return@withContext parseOverpassResponse(response)
         }
 
-        Log.d("MapViewModel", "Loaded $result checkpoints for tile $tile")
+        Log.d("MapViewModel", "Loaded $result customs for tile $tile")
         return result;
     }
 
@@ -55,7 +55,7 @@ class OverpassAPI {
                 list += MapObject(
                     id = el.optLong("id", 0L).toString(),
                     name = name,
-                    type = ObjectType.CHECKPOINT,
+                    type = ObjectType.CUSTOMS,
                     latitude = lat,
                     longitude = lon
                 )
