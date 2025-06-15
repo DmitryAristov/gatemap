@@ -13,8 +13,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import org.osmdroid.util.BoundingBox
-import org.osmdroid.util.GeoPoint
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
 import kotlin.collections.plus
 import kotlin.math.floor
 
@@ -46,17 +46,16 @@ class MapViewModel : ViewModel() {
     val customs: StateFlow<List<MapObject>> = _customs
     val nearestCustom: StateFlow<MapObject?> = _nearestCustom
     val distanceToNearestCustom: StateFlow<Double> = _distanceToNearestCustom
-    val isFollowUserLocation = MutableStateFlow(false)
 
-    fun loadCustomsInVisibleArea(bounds: BoundingBox, zoom: Double) {
+    fun loadCustomsInVisibleArea(bounds: LatLngBounds, zoom: Double) {
         if (zoom < MIN_ZOOM_FOR_TILES) {
             return
         }
-        val centerPoint = bounds.centerWithDateLine
+        val centerPoint = bounds.center
 
         val newTiles = getTilesInBounds(bounds)
             .filter { it !in loadedTiles && it !in loadingTiles }
-            .sortedBy { it.centerGeoPoint().distanceToAsDouble(centerPoint) }
+            .sortedBy { it.centerGeoPoint().distanceTo(centerPoint) }
 
         newTiles.forEach {
             loadingTiles.add(it)
@@ -81,11 +80,11 @@ class MapViewModel : ViewModel() {
         }
     }
 
-    private fun getTilesInBounds(bounds: BoundingBox): List<TileKey> {
-        val minX = lonToTileX(bounds.lonWest)
-        val maxX = lonToTileX(bounds.lonEast)
-        val minY = latToTileY(bounds.latSouth)
-        val maxY = latToTileY(bounds.latNorth)
+    private fun getTilesInBounds(bounds: LatLngBounds): List<TileKey> {
+        val minX = lonToTileX(bounds.longitudeWest)
+        val maxX = lonToTileX(bounds.longitudeEast)
+        val minY = latToTileY(bounds.latitudeSouth)
+        val maxY = latToTileY(bounds.latitudeNorth)
 
         return buildList {
             for (x in minX..maxX) {
@@ -115,40 +114,32 @@ class MapViewModel : ViewModel() {
     }
 
     fun findNearestCustoms(
-        from: GeoPoint,
+        from: LatLng,
         count: Int = 4
     ): List<MapObject> {
         return customs.value
-            .sortedBy { it.location.distanceToAsDouble(from) }
+            .sortedBy { it.location.distanceTo(from) }
             .take(count)
     }
 
     fun latToTileY(lat: Double): Int = floor(lat / TILE_SIZE_DEGREES).toInt()
     fun lonToTileX(lon: Double): Int = floor(lon / TILE_SIZE_DEGREES).toInt()
 
-    fun TileKey.centerGeoPoint(): GeoPoint {
+    fun TileKey.centerGeoPoint(): LatLng {
         val lat = (y + 0.5) * TILE_SIZE_DEGREES
         val lon = (x + 0.5) * TILE_SIZE_DEGREES
-        return GeoPoint(lat, lon)
+        return LatLng(lat, lon)
     }
 
     fun sendSurveyAnswer(answer: Int) {
         //TODO: send answer to server
     }
 
-    fun findAndSetNearestCustom(userPoint: GeoPoint) {
+    fun findAndSetNearestCustom(userPoint: LatLng) {
         val nearestCustom = findNearestCustoms(userPoint, 1).first()
-        val cpPoint = GeoPoint(nearestCustom.latitude, nearestCustom.longitude)
-        val distance = userPoint.distanceToAsDouble(cpPoint)
+        val cpPoint = LatLng(nearestCustom.latitude, nearestCustom.longitude)
+        val distance = userPoint.distanceTo(cpPoint)
         updateDistanceToNearestCustom(distance)
         updateNearestCustom(nearestCustom)
-    }
-
-    fun enableFollow() {
-        isFollowUserLocation.value = true
-    }
-
-    fun disableFollow() {
-        isFollowUserLocation.value = false
     }
 }

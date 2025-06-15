@@ -1,6 +1,6 @@
 package com.daristov.checkpoint.screens.mapscreen.domain
 
-import org.osmdroid.util.GeoPoint
+import org.maplibre.android.geometry.LatLng
 
 data class MapObject(
     val id: String,
@@ -9,7 +9,7 @@ data class MapObject(
     val latitude: Double,
     val longitude: Double
 ) {
-    val location: GeoPoint get() = GeoPoint(latitude, longitude)
+    val location: LatLng get() = LatLng(latitude, longitude)
 }
 
 enum class ObjectType {

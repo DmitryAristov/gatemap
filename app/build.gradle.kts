@@ -75,6 +75,8 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     testImplementation("org.openpnp:opencv:4.5.5-0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3") // или актуальная версия
+    implementation("org.maplibre.gl:android-sdk:11.10.3")
+    implementation("com.google.accompanist:accompanist-systemuicontroller:0.35.0-alpha")
 
 
     val composeBom = platform("androidx.compose:compose-bom:2024.05.00")

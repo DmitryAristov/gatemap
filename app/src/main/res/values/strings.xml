@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Checkpoint</string>
+    <string name="maptiler_api_key">AL3U3T6PM9wdAGgBJTRF</string>
 </resources>

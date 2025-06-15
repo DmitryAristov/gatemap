@@ -1,5 +1,7 @@
 package com.daristov.checkpoint.screens.mapscreen
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.view.ViewTreeObserver
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -23,23 +25,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.daristov.checkpoint.R
-import com.daristov.checkpoint.screens.mapscreen.overlay.CustomLocationOverlay
-import com.daristov.checkpoint.screens.mapscreen.overlay.CustomRotationOverlay
 import com.daristov.checkpoint.screens.mapscreen.viewmodel.MapViewModel
 import com.daristov.checkpoint.screens.settings.SettingsViewModel
-import com.daristov.checkpoint.util.MapsScreenUtils.createBoundingBoxAround
-import com.daristov.checkpoint.util.MapsScreenUtils.handleInitialZoomAndSurvey
-import com.daristov.checkpoint.util.MapsScreenUtils.setupInteractionListeners
-import com.daristov.checkpoint.util.MapsScreenUtils.showCustoms
+import com.daristov.checkpoint.service.CustomLocationEngine
+import com.daristov.checkpoint.util.MapScreenUtils.createBoundingBoxAround
+import com.daristov.checkpoint.util.MapScreenUtils.handleInitialZoomAndSurvey
+import com.daristov.checkpoint.util.MapScreenUtils.setupInteractionListeners
+import com.daristov.checkpoint.util.MapScreenUtils.showVisibleCustoms
 import kotlinx.coroutines.delay
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.CustomZoomButtonsController
-import org.osmdroid.views.MapView
+import org.maplibre.android.MapLibre
+import org.maplibre.android.annotations.Marker
+import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.location.LocationComponentActivationOptions
+import org.maplibre.android.location.LocationComponentOptions
+import org.maplibre.android.location.modes.CameraMode
+import org.maplibre.android.location.modes.RenderMode
+import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.Style
+import org.maplibre.android.maps.Style.OnStyleLoaded
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,18 +56,24 @@ fun MapScreen(navController: NavHostController,
               viewModel: MapViewModel = viewModel(),
               settingsViewModel: SettingsViewModel = viewModel()) {
     val context = LocalContext.current
-    val mapView = rememberConfiguredMapView()
+    MapLibre.getInstance(context)
+    val mapView = rememberConfiguredMapView()!!
 
     val isMapInitialized = remember { mutableStateOf(false) }
     val isAnimatedToInitialLocation = remember { mutableStateOf(false) }
     val isNearestCustomFound = remember { mutableStateOf(false) }
     val isInitialZoomDone = remember { mutableStateOf(false) }
     val needToShowSurvey = remember { mutableStateOf(false) }
+    val visibleMarkerIds = remember { mutableSetOf<String>() }
+    val existingMarkers = remember { mutableStateMapOf<String, Marker>() }
 
     val location by viewModel.location.collectAsState()
     val nearestCustom by viewModel.nearestCustom.collectAsState()
     val distance by viewModel.distanceToNearestCustom.collectAsState()
-    val isFollowUserLocation by viewModel.isFollowUserLocation.collectAsState()
+    val customs by viewModel.customs.collectAsState()
+    val theme by settingsViewModel.themeMode.collectAsState()
+
+    mapView.setupInteractionListeners(context, viewModel, theme, visibleMarkerIds, existingMarkers)
 
     Scaffold(
         topBar = {
@@ -86,36 +101,42 @@ fun MapScreen(navController: NavHostController,
     }
 
     LaunchedEffect(Unit) {
-        viewModel.loadCustomsInVisibleArea(mapView.boundingBox, mapView.zoomLevelDouble)
+        mapView.getMapAsync { map ->
+            val bounds = map.projection.visibleRegion.latLngBounds
+            val zoom = map.cameraPosition.zoom
+            viewModel.loadCustomsInVisibleArea(bounds, zoom)
+        }
     }
 
-    val customs by viewModel.customs.collectAsState()
-    val theme by settingsViewModel.themeMode.collectAsState()
     LaunchedEffect(customs, isMapInitialized) {
         if (isMapInitialized.value && customs.isNotEmpty()) {
-            mapView.showCustoms(customs, context, theme)
+            mapView.showVisibleCustoms(
+                allCustoms = customs,
+                context = context,
+                theme = theme,
+                visibleMarkerIds = visibleMarkerIds,
+                existingMarkers = existingMarkers
+            )
         }
     }
 
     LaunchedEffect(location) {
         location?.let {
-            if (!isFollowUserLocation) {
-                val locationOverlay = mapView.overlays.filterIsInstance<CustomLocationOverlay>().firstOrNull()
-                locationOverlay?.update(it)
-                mapView.invalidate()
-            }
-            if (!isAnimatedToInitialLocation.value) {
-                val point = GeoPoint(it)
-                mapView.controller.animateTo(point)
-                viewModel.loadCustomsInVisibleArea(point.createBoundingBoxAround(100.0), mapView.zoomLevelDouble)
-                isAnimatedToInitialLocation.value = true
+            mapView.getMapAsync { map ->
+                val userLatLng = LatLng(it.latitude, it.longitude)
+
+                if (!isAnimatedToInitialLocation.value) {
+                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(userLatLng, 14.0), 1000)
+                    viewModel.loadCustomsInVisibleArea(userLatLng.createBoundingBoxAround(100.0), 14.0)
+                    isAnimatedToInitialLocation.value = true
+                }
             }
         }
     }
 
     LaunchedEffect(location, customs) {
         if (isNearestCustomFound.value || customs.isEmpty()) return@LaunchedEffect
-        val userPoint = location?.let { GeoPoint(it) } ?: return@LaunchedEffect
+        val userPoint = location?.let { LatLng(it) } ?: return@LaunchedEffect
         viewModel.findAndSetNearestCustom(userPoint)
         isNearestCustomFound.value = true
     }
@@ -139,17 +160,6 @@ fun MapContainer(mapView: MapView,
             .fillMaxSize()
             .padding(padding)
     ) {
-        val locationFlow = viewModel.location
-        val isFollowFlow = viewModel.isFollowUserLocation
-        LaunchedEffect(Unit) {
-            val animator = SmoothCameraAnimator(
-                mapView = mapView,
-                scope = this,
-                locationFlow = locationFlow,
-                isFollowFlow = isFollowFlow
-            )
-            animator.start()
-        }
 
         AndroidView(
             factory = {
@@ -177,9 +187,13 @@ fun MapContainer(mapView: MapView,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             IconButton(onClick = {
-                    viewModel.location.value?.let {
-                        viewModel.enableFollow()
-                    }
+                        mapView.getMapAsync { map ->
+                            map.cameraPosition = CameraPosition.Builder()
+                                    .tilt(50.0)
+                                    .zoom(17.0)
+                                    .build()
+                            map.locationComponent.cameraMode = CameraMode.TRACKING_COMPASS
+                        }
                 },
                 modifier = Modifier
                     .size(56.dp)
@@ -211,34 +225,64 @@ fun MapContainer(mapView: MapView,
 }
 
 @Composable
-fun rememberConfiguredMapView(viewModel: MapViewModel = viewModel(),
-                              settingsViewModel: SettingsViewModel = viewModel()
-): MapView {
+fun rememberConfiguredMapView(): MapView? {
     val context = LocalContext.current
-    val customs by viewModel.customs.collectAsState()
-    val theme by settingsViewModel.themeMode.collectAsState()
+
     val mapView = remember {
         MapView(context).apply {
-            id = R.id.map
-            setTileSource(TileSourceFactory.MAPNIK)
-            setMultiTouchControls(false)
-            zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
-            controller.zoomTo(12.0)
+            getMapAsync { map ->
+                map.setStyle (
+                    Style.Builder().fromUri(
+                        "https://api.maptiler.com/maps/streets/style.json?key=${context.getString(R.string.maptiler_api_key)}"
+                    ),
+                    object : OnStyleLoaded {
+                        override fun onStyleLoaded(style: Style) {
+                            map.locationComponent.apply {
+                                //TODO
+                                val customLocationEngine = CustomLocationEngine()
+                                activateLocationComponent(
+                                    LocationComponentActivationOptions.builder(
+                                        context,
+                                        style
+                                    )
+                                        .useDefaultLocationEngine(true)
+//                                        .useSpecializedLocationLayer(true)
+//                                        .locationEngine(customLocationEngine)
+                                        .build()
+                                )
+                                if (ActivityCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.ACCESS_FINE_LOCATION
+                                    ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    ) != PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    return@apply
+                                }
+                                isLocationComponentEnabled = true
+                                renderMode = RenderMode.COMPASS
+                                cameraMode = CameraMode.TRACKING
+
+                                val options = LocationComponentOptions.builder(context)
+                                    .pulseEnabled(true)
+                                    .accuracyAnimationEnabled(true)
+                                    .compassAnimationEnabled(true)
+                                    .trackingGesturesManagement(true)
+                                    .pulseMaxRadius(50f)
+                                    .build()
+                                applyStyle(options)
+                            }
+                        }
+                    }
+                )
+                map.cameraPosition = CameraPosition.Builder()
+                    .zoom(17.0)
+                    .tilt(50.0)
+                    .build()
+            }
         }
     }
-
-    val locationOverlay = remember {
-        CustomLocationOverlay().apply {
-            icon = ContextCompat.getDrawable(context, R.drawable.ic_current_location)
-        }
-    }
-    val rotationOverlay = remember {
-        CustomRotationOverlay(viewModel)
-    }
-    mapView.overlays.add(locationOverlay)
-    mapView.overlays.add(rotationOverlay)
-
-    mapView.setupInteractionListeners(viewModel, context, customs, theme)
     return mapView
 }
 
