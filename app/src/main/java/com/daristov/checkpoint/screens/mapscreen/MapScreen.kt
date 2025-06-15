@@ -1,9 +1,10 @@
 package com.daristov.checkpoint.screens.mapscreen
 
-import android.Manifest
-import android.content.pm.PackageManager
+import android.annotation.SuppressLint
+import android.content.Context
 import android.view.ViewTreeObserver
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,13 +26,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.app.ActivityCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.daristov.checkpoint.R
 import com.daristov.checkpoint.screens.mapscreen.viewmodel.MapViewModel
+import com.daristov.checkpoint.screens.settings.AppThemeMode
 import com.daristov.checkpoint.screens.settings.SettingsViewModel
-import com.daristov.checkpoint.service.CustomLocationEngine
 import com.daristov.checkpoint.util.MapScreenUtils.createBoundingBoxAround
 import com.daristov.checkpoint.util.MapScreenUtils.handleInitialZoomAndSurvey
 import com.daristov.checkpoint.util.MapScreenUtils.setupInteractionListeners
@@ -46,6 +46,7 @@ import org.maplibre.android.location.LocationComponentActivationOptions
 import org.maplibre.android.location.LocationComponentOptions
 import org.maplibre.android.location.modes.CameraMode
 import org.maplibre.android.location.modes.RenderMode
+import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.maps.Style.OnStyleLoaded
@@ -57,7 +58,8 @@ fun MapScreen(navController: NavHostController,
               settingsViewModel: SettingsViewModel = viewModel()) {
     val context = LocalContext.current
     MapLibre.getInstance(context)
-    val mapView = rememberConfiguredMapView()!!
+    val theme by settingsViewModel.themeMode.collectAsState()
+    val mapView = rememberConfiguredMapView(theme)
 
     val isMapInitialized = remember { mutableStateOf(false) }
     val isAnimatedToInitialLocation = remember { mutableStateOf(false) }
@@ -71,7 +73,6 @@ fun MapScreen(navController: NavHostController,
     val nearestCustom by viewModel.nearestCustom.collectAsState()
     val distance by viewModel.distanceToNearestCustom.collectAsState()
     val customs by viewModel.customs.collectAsState()
-    val theme by settingsViewModel.themeMode.collectAsState()
 
     mapView.setupInteractionListeners(context, viewModel, theme, visibleMarkerIds, existingMarkers)
 
@@ -225,57 +226,13 @@ fun MapContainer(mapView: MapView,
 }
 
 @Composable
-fun rememberConfiguredMapView(): MapView? {
+fun rememberConfiguredMapView(theme: AppThemeMode): MapView {
     val context = LocalContext.current
 
     val mapView = remember {
         MapView(context).apply {
+            id = R.id.map
             getMapAsync { map ->
-                map.setStyle (
-                    Style.Builder().fromUri(
-                        "https://api.maptiler.com/maps/streets/style.json?key=${context.getString(R.string.maptiler_api_key)}"
-                    ),
-                    object : OnStyleLoaded {
-                        override fun onStyleLoaded(style: Style) {
-                            map.locationComponent.apply {
-                                //TODO
-                                val customLocationEngine = CustomLocationEngine()
-                                activateLocationComponent(
-                                    LocationComponentActivationOptions.builder(
-                                        context,
-                                        style
-                                    )
-                                        .useDefaultLocationEngine(true)
-//                                        .useSpecializedLocationLayer(true)
-//                                        .locationEngine(customLocationEngine)
-                                        .build()
-                                )
-                                if (ActivityCompat.checkSelfPermission(
-                                        context,
-                                        Manifest.permission.ACCESS_FINE_LOCATION
-                                    ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                                        context,
-                                        Manifest.permission.ACCESS_COARSE_LOCATION
-                                    ) != PackageManager.PERMISSION_GRANTED
-                                ) {
-                                    return@apply
-                                }
-                                isLocationComponentEnabled = true
-                                renderMode = RenderMode.COMPASS
-                                cameraMode = CameraMode.TRACKING
-
-                                val options = LocationComponentOptions.builder(context)
-                                    .pulseEnabled(true)
-                                    .accuracyAnimationEnabled(true)
-                                    .compassAnimationEnabled(true)
-                                    .trackingGesturesManagement(true)
-                                    .pulseMaxRadius(50f)
-                                    .build()
-                                applyStyle(options)
-                            }
-                        }
-                    }
-                )
                 map.cameraPosition = CameraPosition.Builder()
                     .zoom(17.0)
                     .tilt(50.0)
@@ -283,7 +240,63 @@ fun rememberConfiguredMapView(): MapView? {
             }
         }
     }
+
+    val isSystemInDarkTheme = isSystemInDarkTheme()
+    val apiKey = context.getString(R.string.maptiler_api_key)
+    val styleUrl = remember(theme) {
+        val darkStyleUrl = "https://api.maptiler.com/maps/dataviz-dark/style.json?key=$apiKey"
+        val lightStyleUrl = "https://api.maptiler.com/maps/streets/style.json?key=$apiKey"
+        when (theme) {
+            AppThemeMode.DARK -> darkStyleUrl
+            AppThemeMode.LIGHT -> lightStyleUrl
+            AppThemeMode.SYSTEM -> {
+                if (isSystemInDarkTheme) {
+                    return@remember darkStyleUrl
+                } else {
+                    return@remember lightStyleUrl
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(styleUrl) {
+        mapView.getMapAsync { map ->
+            map.setStyle(
+                Style.Builder().fromUri(styleUrl),
+                OnStyleLoadedImpl(map, context)
+            )
+        }
+    }
+
     return mapView
+}
+
+class OnStyleLoadedImpl(private val map: MapLibreMap, private val context: Context) : OnStyleLoaded {
+    @SuppressLint("MissingPermission")
+    override fun onStyleLoaded(style: Style) {
+        map.locationComponent.apply {
+            //TODO
+//            val customLocationEngine = CustomLocationEngine()
+            activateLocationComponent(
+                LocationComponentActivationOptions.builder(context, style)
+                    .useDefaultLocationEngine(true)
+//                    .useSpecializedLocationLayer(true)
+//                    .locationEngine(customLocationEngine)
+                    .build()
+            )
+            isLocationComponentEnabled = true
+            renderMode = RenderMode.COMPASS
+            cameraMode = CameraMode.TRACKING
+            val options = LocationComponentOptions.builder(context)
+                .pulseEnabled(true)
+                .accuracyAnimationEnabled(true)
+                .compassAnimationEnabled(true)
+                .trackingGesturesManagement(true)
+                .pulseMaxRadius(50f)
+                .build()
+            applyStyle(options)
+        }
+    }
 }
 
 @Composable
