@@ -37,7 +37,6 @@
         <uses-library android:name="org.osmdroid" android:required="false" />
         <service
             android:name=".service.LocationService"
-            android:foregroundServiceType="location"
             android:exported="false" />
     </application>
 

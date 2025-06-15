@@ -68,14 +68,3 @@ fun ApplySystemBarColors(
         window.navigationBarColor = navigationBarColor.toArgb()
     }
 }
-
-suspend fun Context.getSavedThemeMode(): AppThemeMode {
-
-    val preferences = dataStore.data.first()
-    return when (preferences[stringPreferencesKey("theme_mode")]) {
-        "light" -> AppThemeMode.LIGHT
-        "dark" -> AppThemeMode.DARK
-        "system" -> AppThemeMode.SYSTEM
-        else -> AppThemeMode.SYSTEM
-    }
-}

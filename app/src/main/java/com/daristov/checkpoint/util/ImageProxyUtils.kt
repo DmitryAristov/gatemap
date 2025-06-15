@@ -7,7 +7,6 @@ import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.YuvImage
 import androidx.camera.core.ImageProxy
-import androidx.camera.core.impl.utils.MatrixExt.postRotate
 import java.io.ByteArrayOutputStream
 
 object ImageProxyUtils {

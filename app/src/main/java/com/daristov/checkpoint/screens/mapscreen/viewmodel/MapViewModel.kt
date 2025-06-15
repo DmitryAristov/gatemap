@@ -5,7 +5,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.daristov.checkpoint.screens.mapscreen.domain.MapObject
-import com.daristov.checkpoint.service.LocationProvider
+import com.daristov.checkpoint.service.LocationRepository
 import com.daristov.checkpoint.service.OverpassAPI
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -35,14 +35,13 @@ class MapViewModel : ViewModel() {
 
     init {
         viewModelScope.launch {
-            LocationProvider.locationFlow.collect { loc ->
+            LocationRepository.locationFlow.collect { loc ->
                 _location.value = loc
             }
         }
         startTileLoader()
     }
 
-    val location: StateFlow<Location?> = _location
     val customs: StateFlow<List<MapObject>> = _customs
     val nearestCustom: StateFlow<MapObject?> = _nearestCustom
     val distanceToNearestCustom: StateFlow<Double> = _distanceToNearestCustom

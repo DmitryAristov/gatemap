@@ -1,7 +1,6 @@
 package com.daristov.checkpoint.screens.alarm
 
 import android.app.Application
-import android.graphics.drawable.Drawable
 import android.hardware.camera2.CameraMetadata
 import android.hardware.camera2.CaptureRequest
 import androidx.annotation.OptIn
@@ -29,8 +28,6 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable

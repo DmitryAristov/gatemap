@@ -21,10 +21,9 @@ import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.location.modes.CameraMode
 import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapLibreMap.CancelableCallback
 import kotlin.collections.set
-import kotlin.math.atan2
 import kotlin.math.cos
-import kotlin.math.sin
 
 object MapScreenUtils {
 
@@ -126,11 +125,22 @@ object MapScreenUtils {
                 return@getMapAsync
             }
 
-            map.cameraPosition = CameraPosition.Builder()
-                .tilt(50.0)
-                .zoom(17.0)
-                .build()
-            map.locationComponent.cameraMode = CameraMode.TRACKING_COMPASS
+            map.animateCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.Builder()
+                        .tilt(50.0)
+                        .zoom(17.0)
+                        .target(LatLng(location))
+                        .build()
+                ),
+                200,
+                object : CancelableCallback {
+                    override fun onFinish() {
+                        map.locationComponent.cameraMode = CameraMode.TRACKING_COMPASS
+                    }
+                    override fun onCancel() {  }
+                }
+            )
         }
     }
 
@@ -143,7 +153,7 @@ object MapScreenUtils {
             allPoints.forEach { include(it) }
         }.build().increaseByMargin(0.2)
 
-        animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 100), 1000)
+        animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 100), 200)
     }
 
     fun LatLng.createBoundingBoxAround(distanceKm: Double): LatLngBounds {

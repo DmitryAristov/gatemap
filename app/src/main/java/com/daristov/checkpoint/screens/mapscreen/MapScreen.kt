@@ -1,8 +1,9 @@
 package com.daristov.checkpoint.screens.mapscreen
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
-import android.view.ViewTreeObserver
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +33,8 @@ import com.daristov.checkpoint.R
 import com.daristov.checkpoint.screens.mapscreen.viewmodel.MapViewModel
 import com.daristov.checkpoint.screens.settings.AppThemeMode
 import com.daristov.checkpoint.screens.settings.SettingsViewModel
+import com.daristov.checkpoint.service.CustomLocationEngine
+import com.daristov.checkpoint.service.LocationRepository
 import com.daristov.checkpoint.util.MapScreenUtils.createBoundingBoxAround
 import com.daristov.checkpoint.util.MapScreenUtils.handleInitialZoomAndSurvey
 import com.daristov.checkpoint.util.MapScreenUtils.setupInteractionListeners
@@ -47,6 +50,7 @@ import org.maplibre.android.location.LocationComponentOptions
 import org.maplibre.android.location.modes.CameraMode
 import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapLibreMap.CancelableCallback
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.maps.Style.OnStyleLoaded
@@ -61,7 +65,6 @@ fun MapScreen(navController: NavHostController,
     val theme by settingsViewModel.themeMode.collectAsState()
     val mapView = rememberConfiguredMapView(theme)
 
-    val isMapInitialized = remember { mutableStateOf(false) }
     val isAnimatedToInitialLocation = remember { mutableStateOf(false) }
     val isNearestCustomFound = remember { mutableStateOf(false) }
     val isInitialZoomDone = remember { mutableStateOf(false) }
@@ -69,7 +72,7 @@ fun MapScreen(navController: NavHostController,
     val visibleMarkerIds = remember { mutableSetOf<String>() }
     val existingMarkers = remember { mutableStateMapOf<String, Marker>() }
 
-    val location by viewModel.location.collectAsState()
+    val location by LocationRepository.locationFlow.collectAsState()
     val nearestCustom by viewModel.nearestCustom.collectAsState()
     val distance by viewModel.distanceToNearestCustom.collectAsState()
     val customs by viewModel.customs.collectAsState()
@@ -97,8 +100,13 @@ fun MapScreen(navController: NavHostController,
             navController = navController,
             viewModel = viewModel,
             padding = padding,
-            needToShowSurvey = needToShowSurvey,
-            isMapInitialized = isMapInitialized)
+            needToShowSurvey = needToShowSurvey)
+    }
+
+    val activity = context as? Activity
+    BackHandler {
+        activity?.moveTaskToBack(true) // Сворачивает приложение
+        // или: activity?.finish() // Закрывает приложение
     }
 
     LaunchedEffect(Unit) {
@@ -109,8 +117,8 @@ fun MapScreen(navController: NavHostController,
         }
     }
 
-    LaunchedEffect(customs, isMapInitialized) {
-        if (isMapInitialized.value && customs.isNotEmpty()) {
+    LaunchedEffect(customs) {
+        if (customs.isNotEmpty()) {
             mapView.showVisibleCustoms(
                 allCustoms = customs,
                 context = context,
@@ -124,10 +132,18 @@ fun MapScreen(navController: NavHostController,
     LaunchedEffect(location) {
         location?.let {
             mapView.getMapAsync { map ->
-                val userLatLng = LatLng(it.latitude, it.longitude)
-
                 if (!isAnimatedToInitialLocation.value) {
-                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(userLatLng, 14.0), 1000)
+                    val userLatLng = LatLng(it.latitude, it.longitude)
+                    map.animateCamera(
+                        CameraUpdateFactory.newCameraPosition(
+                            CameraPosition.Builder()
+                                .tilt(50.0)
+                                .zoom(17.0)
+                                .target(LatLng(it))
+                                .build()
+                        ),
+                        200
+                    )
                     viewModel.loadCustomsInVisibleArea(userLatLng.createBoundingBoxAround(100.0), 14.0)
                     isAnimatedToInitialLocation.value = true
                 }
@@ -154,29 +170,17 @@ fun MapContainer(mapView: MapView,
                  navController: NavHostController,
                  viewModel: MapViewModel,
                  padding: PaddingValues,
-                 needToShowSurvey: MutableState<Boolean>,
-                 isMapInitialized: MutableState<Boolean>) {
+                 needToShowSurvey: MutableState<Boolean>) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(padding)
     ) {
+        val location by LocationRepository.locationFlow.collectAsState()
 
         AndroidView(
-            factory = {
-                mapView.apply {
-                    viewTreeObserver.addOnGlobalLayoutListener(object :
-                        ViewTreeObserver.OnGlobalLayoutListener {
-                        override fun onGlobalLayout() {
-                            if (!isMapInitialized.value) {
-                                isMapInitialized.value = true
-                                viewTreeObserver.removeOnGlobalLayoutListener(this)
-                            }
-                        }
-                    })
-                }
-            }, modifier = Modifier
-                .fillMaxSize()
+            factory = { mapView },
+            modifier = Modifier.fillMaxSize()
         )
         Row(
             modifier = Modifier
@@ -189,11 +193,24 @@ fun MapContainer(mapView: MapView,
         ) {
             IconButton(onClick = {
                         mapView.getMapAsync { map ->
-                            map.cameraPosition = CameraPosition.Builder()
-                                    .tilt(50.0)
-                                    .zoom(17.0)
-                                    .build()
-                            map.locationComponent.cameraMode = CameraMode.TRACKING_COMPASS
+                            map.animateCamera(
+                                CameraUpdateFactory.newCameraPosition(
+                                    CameraPosition.Builder()
+                                        .tilt(50.0)
+                                        .zoom(17.0)
+                                        .target(LatLng(location!!))
+                                        .build()
+                                ),
+                                200,
+                                object : CancelableCallback {
+                                    override fun onFinish() {
+                                        map.locationComponent.cameraMode = CameraMode.TRACKING_COMPASS
+                                    }
+                                    override fun onCancel() {
+                                        return
+                                    }
+                                }
+                            )
                         }
                 },
                 modifier = Modifier
@@ -228,18 +245,7 @@ fun MapContainer(mapView: MapView,
 @Composable
 fun rememberConfiguredMapView(theme: AppThemeMode): MapView {
     val context = LocalContext.current
-
-    val mapView = remember {
-        MapView(context).apply {
-            id = R.id.map
-            getMapAsync { map ->
-                map.cameraPosition = CameraPosition.Builder()
-                    .zoom(17.0)
-                    .tilt(50.0)
-                    .build()
-            }
-        }
-    }
+    val location by LocationRepository.locationFlow.collectAsState()
 
     val isSystemInDarkTheme = isSystemInDarkTheme()
     val apiKey = context.getString(R.string.maptiler_api_key)
@@ -259,29 +265,47 @@ fun rememberConfiguredMapView(theme: AppThemeMode): MapView {
         }
     }
 
-    LaunchedEffect(styleUrl) {
-        mapView.getMapAsync { map ->
-            map.setStyle(
-                Style.Builder().fromUri(styleUrl),
-                OnStyleLoadedImpl(map, context)
-            )
+    val mapView = remember {
+        MapView(context).apply {
+            id = R.id.map
+            getMapAsync { map ->
+                map.cameraPosition = CameraPosition.Builder()
+                    .zoom(17.0)
+                    .tilt(50.0)
+                    .build()
+            }
+        }
+    }
+
+    val isStyleLoaded = remember { mutableStateOf(false) }
+    LaunchedEffect(location) {
+        if (isStyleLoaded.value) return@LaunchedEffect
+        location?.let {
+            mapView.getMapAsync { map ->
+                map.setStyle(
+                    Style.Builder().fromUri(styleUrl),
+                    OnStyleLoadedImpl(map, context)
+                )
+            }
+            isStyleLoaded.value = true
         }
     }
 
     return mapView
 }
 
-class OnStyleLoadedImpl(private val map: MapLibreMap, private val context: Context) : OnStyleLoaded {
+class OnStyleLoadedImpl(
+    private val map: MapLibreMap,
+    private val context: Context
+) : OnStyleLoaded {
     @SuppressLint("MissingPermission")
     override fun onStyleLoaded(style: Style) {
         map.locationComponent.apply {
-            //TODO
-//            val customLocationEngine = CustomLocationEngine()
+            val customLocationEngine = CustomLocationEngine()
             activateLocationComponent(
                 LocationComponentActivationOptions.builder(context, style)
-                    .useDefaultLocationEngine(true)
-//                    .useSpecializedLocationLayer(true)
-//                    .locationEngine(customLocationEngine)
+                    .useSpecializedLocationLayer(true)
+                    .locationEngine(customLocationEngine)
                     .build()
             )
             isLocationComponentEnabled = true
@@ -291,7 +315,7 @@ class OnStyleLoadedImpl(private val map: MapLibreMap, private val context: Conte
                 .pulseEnabled(true)
                 .accuracyAnimationEnabled(true)
                 .compassAnimationEnabled(true)
-                .trackingGesturesManagement(true)
+                .trackingGesturesManagement(false)
                 .pulseMaxRadius(50f)
                 .build()
             applyStyle(options)

@@ -31,7 +31,7 @@ class OverpassAPI {
         }
 
         Log.d("MapViewModel", "Loaded $result customs for tile $tile")
-        return result;
+        return result
     }
 
     fun parseOverpassResponse(json: String): List<MapObject> {

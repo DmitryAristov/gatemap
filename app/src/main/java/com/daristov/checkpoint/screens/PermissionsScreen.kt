@@ -2,10 +2,8 @@ package com.daristov.checkpoint.screens
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -26,7 +24,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun PermissionsScreen(
     onPermissionsGranted: () -> Unit
@@ -35,8 +32,7 @@ fun PermissionsScreen(
     val permissions = listOf(
         Manifest.permission.CAMERA,
         Manifest.permission.ACCESS_FINE_LOCATION,
-        Manifest.permission.ACCESS_COARSE_LOCATION,
-        Manifest.permission.POST_NOTIFICATIONS
+        Manifest.permission.ACCESS_COARSE_LOCATION
     )
 
     val permissionLauncher = rememberLauncherForActivityResult(
