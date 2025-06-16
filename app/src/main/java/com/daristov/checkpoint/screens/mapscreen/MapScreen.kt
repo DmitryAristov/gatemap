@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
@@ -26,9 +28,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.daristov.checkpoint.R
+import com.daristov.checkpoint.screens.mapscreen.domain.MapObject
 import com.daristov.checkpoint.screens.mapscreen.viewmodel.MIN_ZOOM_FOR_TILES_LOAD
 import com.daristov.checkpoint.screens.mapscreen.viewmodel.MapViewModel
 import com.daristov.checkpoint.screens.settings.AppThemeMode
@@ -56,6 +60,13 @@ const val DEFAULT_TILT = 50.0
 const val DEFAULT_ZOOM = 17.0
 const val FIRST_CUSTOMS_LOAD_BOUNDINGBOX_SIZE = 100.0
 
+enum class MapInitStep(val message: String) {
+    LOADING_MAP("Загружаем карту...        "),
+    LOADING_LOCATION("Получаем местоположение..."),
+    LOADING_CUSTOMS("Ищем ближайшие КПП...     "),
+    DONE("")
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(navController: NavHostController,
@@ -64,29 +75,24 @@ fun MapScreen(navController: NavHostController,
     val context = LocalContext.current
     MapLibre.getInstance(context)
 
-    val isStyleLoaded = remember { mutableStateOf(false) }
-    val isLocationComponentLoaded = remember { mutableStateOf(false) }
-    val initialCustomsLoadRequested = remember { mutableStateOf(false) }
-    val isInitialZoomDone = remember { mutableStateOf(false) }
-    val needToShowSurvey = remember { mutableStateOf(false) }
-    val visibleMarkerIds = remember { mutableSetOf<String>() }
-    val existingMarkers = remember { mutableStateMapOf<String, Marker>() }
-
     val theme by settingsViewModel.themeMode.collectAsState()
     val location by LocationRepository.locationFlow.collectAsState()
     val customs by viewModel.customs.collectAsState()
+    val currentStep by viewModel.currentStep.collectAsState()
+    val isInitialZoomAndSurveyDone by viewModel.isInitialZoomAndSurveyDone.collectAsState()
 
-    val mapView = rememberConfiguredMapView(theme, isStyleLoaded, visibleMarkerIds, existingMarkers)
+    val mapView = rememberConfiguredMapView(viewModel, theme)
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text("Карта КПП", color = MaterialTheme.colorScheme.onBackground)
-                        },
+                },
                 actions = {
                     IconButton(onClick = { navController.navigate("settings") }) {
-                        Icon(imageVector = Icons.Default.Settings,
+                        Icon(
+                            imageVector = Icons.Default.Settings,
                             tint = MaterialTheme.colorScheme.onSurface,
                             contentDescription = "Настройки"
                         )
@@ -95,7 +101,7 @@ fun MapScreen(navController: NavHostController,
             )
         }
     ) { padding ->
-        MapContainer(mapView, navController, viewModel, padding, needToShowSurvey, location)
+        MapContainer(mapView, navController, viewModel, padding)
     }
 
     val activity = context as? Activity
@@ -104,35 +110,38 @@ fun MapScreen(navController: NavHostController,
     LaunchedEffect(customs) {
         if (customs.isNotEmpty()) {
             mapView.getMapAsync { map ->
-                map.showVisibleCustoms(customs, context, theme, visibleMarkerIds, existingMarkers)
+                map.showVisibleCustoms(viewModel, context, theme)
             }
         }
     }
 
     LaunchedEffect(location) {
-        if (!isStyleLoaded.value || (isLocationComponentLoaded.value && initialCustomsLoadRequested.value)) return@LaunchedEffect
         location?.let {
+            if (currentStep != MapInitStep.LOADING_LOCATION) return@LaunchedEffect
             mapView.getMapAsync { map ->
-                if (!initialCustomsLoadRequested.value) {
-                    val userLatLng = LatLng(it)
-                    viewModel.loadCustomsInVisibleArea(
-                        userLatLng.createBoundingBoxAround(FIRST_CUSTOMS_LOAD_BOUNDINGBOX_SIZE), MIN_ZOOM_FOR_TILES_LOAD)
-                    initialCustomsLoadRequested.value = true
-                }
-
-                if (!isLocationComponentLoaded.value) {
-                    map.loadLocationComponent(context)
-                    isLocationComponentLoaded.value = true
-                }
+                val userLatLng = LatLng(it)
+                map.loadLocationComponent(context)
+                map.cameraPosition = CameraPosition.Builder()
+                    .tilt(DEFAULT_TILT)
+                    .zoom(DEFAULT_ZOOM)
+                    .target(userLatLng)
+                    .build()
+                viewModel.loadCustomsInVisibleArea(
+                    userLatLng.createBoundingBoxAround(FIRST_CUSTOMS_LOAD_BOUNDINGBOX_SIZE),
+                    MIN_ZOOM_FOR_TILES_LOAD
+                )
+                viewModel.setCurrentStep(MapInitStep.LOADING_CUSTOMS)
             }
         }
     }
 
     LaunchedEffect(location, customs) {
-        if (isInitialZoomDone.value || customs.isEmpty()) return@LaunchedEffect
         location?.let {
-            mapView.handleInitialZoomAndSurvey(it, needToShowSurvey, viewModel)
-            isInitialZoomDone.value = true
+            if (currentStep != MapInitStep.LOADING_CUSTOMS || customs.isEmpty() || isInitialZoomAndSurveyDone)
+                return@LaunchedEffect
+            mapView.handleInitialZoomAndSurvey(it, viewModel)
+            viewModel.setCurrentStep(MapInitStep.DONE)
+            viewModel.setInitialZoomAndSurveyDone(true)
         }
     }
 }
@@ -141,9 +150,12 @@ fun MapScreen(navController: NavHostController,
 fun MapContainer(mapView: MapView,
                  navController: NavHostController,
                  viewModel: MapViewModel,
-                 padding: PaddingValues,
-                 needToShowSurvey: MutableState<Boolean>,
-                 location: Location?) {
+                 padding: PaddingValues) {
+    val needToShowSurvey by viewModel.needToShowSurvey.collectAsState()
+    val currentStep by viewModel.currentStep.collectAsState()
+    val isInitialZoomAndSurveyDone by viewModel.isInitialZoomAndSurveyDone.collectAsState()
+    val location by LocationRepository.locationFlow.collectAsState()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -153,6 +165,7 @@ fun MapContainer(mapView: MapView,
             factory = { mapView },
             modifier = Modifier.fillMaxSize()
         )
+        if (!isInitialZoomAndSurveyDone) MapLoadingIndicator(message = currentStep.message)
         Row(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -188,7 +201,7 @@ fun MapContainer(mapView: MapView,
             }
         }
         QueueSurveyManager(
-            isUserInQueue = needToShowSurvey.value,
+            isUserInQueue = needToShowSurvey,
             onAnswer = { minutes ->
                 viewModel.sendSurveyAnswer(minutes)
             },
@@ -199,11 +212,8 @@ fun MapContainer(mapView: MapView,
 
 @Composable
 fun rememberConfiguredMapView(
-    theme: AppThemeMode,
-    isStyleLoaded: MutableState<Boolean>,
-    visibleMarkerIds: MutableSet<String>,
-    existingMarkers: MutableMap<String, Marker>,
-    viewModel: MapViewModel = viewModel()
+    viewModel: MapViewModel,
+    theme: AppThemeMode
 ): MapView {
     val context = LocalContext.current
     val isSystemInDarkTheme = isSystemInDarkTheme()
@@ -218,14 +228,13 @@ fun rememberConfiguredMapView(
                 map.setStyle(Style.Builder().fromUri(styleUrl),
                     object : OnStyleLoaded {
                         override fun onStyleLoaded(style: Style) {
-                            isStyleLoaded.value = true
+                            viewModel.setCurrentStep(MapInitStep.LOADING_LOCATION)
                         }
                     })
                 map.cameraPosition = CameraPosition.Builder()
-//                    .tilt(DEFAULT_TILT)
                     .zoom(DEFAULT_ZOOM)
                     .build()
-                map.setupInteractionListeners(context, viewModel, theme, visibleMarkerIds, existingMarkers)
+                map.setupInteractionListeners(context, viewModel, theme)
             }
         }
     }
@@ -311,5 +320,42 @@ fun QueueSurveyManager(
                 showSurvey = false
             }
         )
+    }
+}
+
+@Composable
+fun MapLoadingIndicator(message: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp)
+            .wrapContentHeight(align = Alignment.Top)
+            .zIndex(1f),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Row(
+            modifier = Modifier
+                .background(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(modifier = Modifier
+                .padding(end = 12.dp)
+                .offset(y = 1.dp) // можно подкорректировать вручную
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp
+                )
+            }
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }

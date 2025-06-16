@@ -4,6 +4,7 @@ import android.location.Location
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.daristov.checkpoint.screens.mapscreen.MapInitStep
 import com.daristov.checkpoint.screens.mapscreen.domain.MapObject
 import com.daristov.checkpoint.service.LocationRepository
 import com.daristov.checkpoint.service.OverpassAPI
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.maplibre.android.annotations.Marker
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import kotlin.collections.plus
@@ -27,6 +29,12 @@ class MapViewModel : ViewModel() {
     private val overpassAPI: OverpassAPI = OverpassAPI()
     private val _location = MutableStateFlow<Location?>(null)
     private val _customs = MutableStateFlow<List<MapObject>>(emptyList())
+    private val _currentStep = MutableStateFlow<MapInitStep>(MapInitStep.LOADING_MAP)
+    private val _needToShowSurvey = MutableStateFlow<Boolean>(false)
+    private val _isInitialZoomAndSurveyDone = MutableStateFlow<Boolean>(false)
+    private val _visibleMarkerIds = MutableStateFlow<MutableSet<String>>(mutableSetOf())
+    private val _existingMarkers = MutableStateFlow<MutableMap<String, Marker>>(mutableMapOf())
+
     private val loadedTiles = mutableSetOf<TileKey>()
     private val loadingTiles = mutableSetOf<TileKey>()
     private val pendingTilesQueue = Channel<TileKey>(Channel.Factory.UNLIMITED)
@@ -41,6 +49,11 @@ class MapViewModel : ViewModel() {
     }
 
     val customs: StateFlow<List<MapObject>> = _customs
+    val currentStep: StateFlow<MapInitStep> = _currentStep
+    val isInitialZoomAndSurveyDone: StateFlow<Boolean> = _isInitialZoomAndSurveyDone
+    val needToShowSurvey: StateFlow<Boolean> = _needToShowSurvey
+    val visibleMarkerIds: StateFlow<MutableSet<String>> = _visibleMarkerIds
+    val existingMarkers: StateFlow<MutableMap<String, Marker>> = _existingMarkers
 
     fun loadCustomsInVisibleArea(bounds: LatLngBounds, zoom: Double) {
         if (zoom < MIN_ZOOM_FOR_TILES_LOAD) {
@@ -94,6 +107,50 @@ class MapViewModel : ViewModel() {
         return customs.value
             .sortedBy { it.location.distanceTo(from) }
             .take(count)
+    }
+
+    fun setCurrentStep(step: MapInitStep) {
+        _currentStep.value = step
+    }
+
+    fun getCurrentStep(): MapInitStep {
+        return currentStep.value
+    }
+
+    fun setInitialZoomAndSurveyDone(done: Boolean) {
+        _isInitialZoomAndSurveyDone.value = done
+    }
+
+    fun setNeedToShowSurvey(show: Boolean) {
+        _needToShowSurvey.value = show
+    }
+
+    fun getVisibleMarkerIds(): MutableSet<String> {
+        return _visibleMarkerIds.value
+    }
+
+    fun getExistingMarkers(): MutableMap<String, Marker> {
+        return _existingMarkers.value
+    }
+
+    fun removeVisibleMarkerId(id: String) {
+        _visibleMarkerIds.value.remove(id)
+    }
+
+    fun removeExistingMarker(id: String) {
+        _existingMarkers.value.remove(id)
+    }
+
+    fun addVisibleMarkerId(id: String) {
+        _visibleMarkerIds.value.add(id)
+    }
+
+    fun addExistingMarker(id: String, marker: Marker) {
+        _existingMarkers.value[id] = marker
+    }
+
+    fun containsVisibleMarkerId(id: String): Boolean {
+        return _visibleMarkerIds.value.contains(id)
     }
 
     fun latToTileY(lat: Double): Int = floor(lat / CUSTOMS_TILE_SIZE_DEGREES).toInt()

@@ -5,7 +5,6 @@ import android.content.Context
 import android.location.Location
 import android.util.SizeF
 import androidx.annotation.DrawableRes
-import androidx.compose.runtime.MutableState
 import androidx.core.content.ContextCompat
 import com.daristov.checkpoint.R
 import com.daristov.checkpoint.screens.mapscreen.domain.MapObject
@@ -47,8 +46,6 @@ object MapScreenUtils {
         context: Context,
         viewModel: MapViewModel,
         theme: AppThemeMode,
-        visibleMarkerIds: MutableSet<String>,
-        existingMarkers: MutableMap<String, Marker>
     ) {
         val minIntervalMs = 100L
         var lastUpdate = 0L
@@ -62,23 +59,23 @@ object MapScreenUtils {
             val zoom = cameraPosition.zoom
             viewModel.loadCustomsInVisibleArea(bounds, zoom)
 
-            val customs = viewModel.customs.value
-            showVisibleCustoms(customs, context, theme, visibleMarkerIds, existingMarkers)
+            showVisibleCustoms(viewModel, context, theme)
         }
     }
 
     fun MapLibreMap.showVisibleCustoms(
-        allCustoms: List<MapObject>,
+        viewModel: MapViewModel,
         context: Context,
-        theme: AppThemeMode,
-        visibleMarkerIds: MutableSet<String>,
-        existingMarkers: MutableMap<String, Marker>
+        theme: AppThemeMode
     ) {
+        val customs = viewModel.customs.value
+        val existingMarkers = viewModel.existingMarkers.value
+        val visibleMarkerIds = viewModel.visibleMarkerIds.value
         val bounds = projection.visibleRegion.latLngBounds
 
-        // 1. Удаляем маркеры, которые вышли за границы
+        val customsMap = customs.associateBy { it.id }
         val toRemove = visibleMarkerIds.filterNot { id ->
-            val custom = allCustoms.find { it.id == id } ?: return@filterNot false
+            val custom = customsMap[id] ?: return@filterNot true
             bounds.contains(LatLng(custom.latitude, custom.longitude))
         }
         toRemove.forEach { id ->
@@ -87,11 +84,10 @@ object MapScreenUtils {
             visibleMarkerIds.remove(id)
         }
 
-        // 2. Добавляем те, которые попали в границы
-        allCustoms.forEach { custom ->
-            if (visibleMarkerIds.contains(custom.id)) return@forEach
+        customsMap.forEach { custom ->
+            if (visibleMarkerIds.contains(custom.key)) return@forEach
 
-            val latLng = LatLng(custom.latitude, custom.longitude)
+            val latLng = LatLng(custom.value.latitude, custom.value.longitude)
             if (bounds.contains(latLng)) {
                 val icon = createCustomIcon(
                     context,
@@ -104,12 +100,12 @@ object MapScreenUtils {
                 val marker = addMarker(
                     MarkerOptions()
                         .position(latLng)
-                        .title(custom.name)
+                        .title(custom.value.name)
                         .icon(icon)
                 )
 
-                existingMarkers[custom.id] = marker
-                visibleMarkerIds.add(custom.id)
+                existingMarkers[custom.key] = marker
+                visibleMarkerIds.add(custom.key)
             }
         }
     }
@@ -142,7 +138,6 @@ object MapScreenUtils {
 
     fun MapView.handleInitialZoomAndSurvey(
         location: Location,
-        needToShowSurvey: MutableState<Boolean>,
         viewModel: MapViewModel
     ) {
         val userLatLng = LatLng(location)
@@ -151,7 +146,7 @@ object MapScreenUtils {
         val distance = userLatLng.distanceTo(nearestCustomLatLng)
 
         if (distance < CUSTOMS_AREA_RADIUS) {
-            needToShowSurvey.value = true
+            viewModel.setNeedToShowSurvey(true)
             val nearest = viewModel.findNearestCustoms(userLatLng, 1)
             zoomToCustoms(userLatLng, nearest.map { LatLng(it.latitude, it.longitude) })
         } else {
@@ -230,7 +225,7 @@ object MapScreenUtils {
         val latZoom = zoom(effectiveMapHeight, WORLD_DIM.height, latFraction)
         val lngZoom = zoom(effectiveMapWidth, WORLD_DIM.width, lngFraction)
 
-        return minOf(latZoom, lngZoom, ZOOM_MAX.toDouble()) * 0.9
+        return minOf(latZoom, lngZoom, ZOOM_MAX.toDouble()) * 0.95
     }
 
     fun computeHeading(from: LatLng, to: LatLng): Double {
