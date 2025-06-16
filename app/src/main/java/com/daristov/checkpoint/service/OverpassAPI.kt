@@ -4,11 +4,11 @@ import android.util.Log
 import com.daristov.checkpoint.screens.mapscreen.domain.MapObject
 import com.daristov.checkpoint.screens.mapscreen.domain.ObjectType
 import com.daristov.checkpoint.screens.mapscreen.viewmodel.MapViewModel.TileKey
-import com.daristov.checkpoint.screens.mapscreen.viewmodel.TILE_SIZE_DEGREES
+import com.daristov.checkpoint.screens.mapscreen.viewmodel.CUSTOMS_TILE_SIZE_DEGREES
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import org.osmdroid.util.BoundingBox
+import org.maplibre.geojson.BoundingBox
 import java.net.URL
 import java.net.URLEncoder
 
@@ -19,7 +19,7 @@ class OverpassAPI {
         val result = withContext(Dispatchers.IO) {
             val query = """
                     [out:json][timeout:25];
-                    node["barrier"="border_control"](${tileBounds.latSouth},${tileBounds.lonWest},${tileBounds.latNorth},${tileBounds.lonEast});
+                    node["barrier"="border_control"](${tileBounds.south()},${tileBounds.west()},${tileBounds.north()},${tileBounds.east()});
                     out body;
                 """.trimIndent()
 
@@ -68,10 +68,10 @@ class OverpassAPI {
     }
 
     private fun tileToBoundingBox(tile: TileKey): BoundingBox {
-        val south = tile.y * TILE_SIZE_DEGREES
-        val north = (tile.y + 1) * TILE_SIZE_DEGREES
-        val west = tile.x * TILE_SIZE_DEGREES
-        val east = (tile.x + 1) * TILE_SIZE_DEGREES
-        return BoundingBox(north, east, south, west)
+        val south = tile.y * CUSTOMS_TILE_SIZE_DEGREES
+        val north = (tile.y + 1) * CUSTOMS_TILE_SIZE_DEGREES
+        val west = tile.x * CUSTOMS_TILE_SIZE_DEGREES
+        val east = (tile.x + 1) * CUSTOMS_TILE_SIZE_DEGREES
+        return BoundingBox.fromLngLats(west, south, east, north)
     }
 }

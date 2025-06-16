@@ -18,17 +18,15 @@ import org.maplibre.android.geometry.LatLngBounds
 import kotlin.collections.plus
 import kotlin.math.floor
 
-const val TILE_SIZE_DEGREES = 1.0
-private const val MIN_ZOOM_FOR_TILES = 9.0
-private const val TILE_REQUEST_DELAY_MS = 100L
+const val CUSTOMS_TILE_SIZE_DEGREES = 1.0
+const val CUSTOMS_TILE_REQUEST_DELAY_MS = 100L
+const val MIN_ZOOM_FOR_TILES_LOAD = 9.0
 
 class MapViewModel : ViewModel() {
 
     private val overpassAPI: OverpassAPI = OverpassAPI()
     private val _location = MutableStateFlow<Location?>(null)
     private val _customs = MutableStateFlow<List<MapObject>>(emptyList())
-    private val _nearestCustom = MutableStateFlow<MapObject?>(null)
-    private val _distanceToNearestCustom = MutableStateFlow<Double>(-1.0)
     private val loadedTiles = mutableSetOf<TileKey>()
     private val loadingTiles = mutableSetOf<TileKey>()
     private val pendingTilesQueue = Channel<TileKey>(Channel.Factory.UNLIMITED)
@@ -43,11 +41,9 @@ class MapViewModel : ViewModel() {
     }
 
     val customs: StateFlow<List<MapObject>> = _customs
-    val nearestCustom: StateFlow<MapObject?> = _nearestCustom
-    val distanceToNearestCustom: StateFlow<Double> = _distanceToNearestCustom
 
     fun loadCustomsInVisibleArea(bounds: LatLngBounds, zoom: Double) {
-        if (zoom < MIN_ZOOM_FOR_TILES) {
+        if (zoom < MIN_ZOOM_FOR_TILES_LOAD) {
             return
         }
         val centerPoint = bounds.center
@@ -65,7 +61,7 @@ class MapViewModel : ViewModel() {
     private fun startTileLoader() {
         viewModelScope.launch {
             for (tile in pendingTilesQueue) {
-                delay(TILE_REQUEST_DELAY_MS)
+                delay(CUSTOMS_TILE_REQUEST_DELAY_MS)
                 try {
                     val result = overpassAPI.loadTile(tile)
                     _customs.update { it + result }
@@ -94,12 +90,23 @@ class MapViewModel : ViewModel() {
         }
     }
 
-    fun updateNearestCustom(nearest: MapObject) {
-        _nearestCustom.value = nearest
+    fun findNearestCustoms(from: LatLng, count: Int = 4): List<MapObject> {
+        return customs.value
+            .sortedBy { it.location.distanceTo(from) }
+            .take(count)
     }
 
-    fun updateDistanceToNearestCustom(distance: Double) {
-        _distanceToNearestCustom.value = distance
+    fun latToTileY(lat: Double): Int = floor(lat / CUSTOMS_TILE_SIZE_DEGREES).toInt()
+    fun lonToTileX(lon: Double): Int = floor(lon / CUSTOMS_TILE_SIZE_DEGREES).toInt()
+
+    fun TileKey.centerGeoPoint(): LatLng {
+        val lat = (y + 0.5) * CUSTOMS_TILE_SIZE_DEGREES
+        val lon = (x + 0.5) * CUSTOMS_TILE_SIZE_DEGREES
+        return LatLng(lat, lon)
+    }
+
+    fun sendSurveyAnswer(answer: Int) {
+        //TODO: send answer to server
     }
 
     data class TileKey(val x: Int, val y: Int) {
@@ -110,35 +117,5 @@ class MapViewModel : ViewModel() {
         override fun hashCode(): Int {
             return 31 * x + y
         }
-    }
-
-    fun findNearestCustoms(
-        from: LatLng,
-        count: Int = 4
-    ): List<MapObject> {
-        return customs.value
-            .sortedBy { it.location.distanceTo(from) }
-            .take(count)
-    }
-
-    fun latToTileY(lat: Double): Int = floor(lat / TILE_SIZE_DEGREES).toInt()
-    fun lonToTileX(lon: Double): Int = floor(lon / TILE_SIZE_DEGREES).toInt()
-
-    fun TileKey.centerGeoPoint(): LatLng {
-        val lat = (y + 0.5) * TILE_SIZE_DEGREES
-        val lon = (x + 0.5) * TILE_SIZE_DEGREES
-        return LatLng(lat, lon)
-    }
-
-    fun sendSurveyAnswer(answer: Int) {
-        //TODO: send answer to server
-    }
-
-    fun findAndSetNearestCustom(userPoint: LatLng) {
-        val nearestCustom = findNearestCustoms(userPoint, 1).first()
-        val cpPoint = LatLng(nearestCustom.latitude, nearestCustom.longitude)
-        val distance = userPoint.distanceTo(cpPoint)
-        updateDistanceToNearestCustom(distance)
-        updateNearestCustom(nearestCustom)
     }
 }

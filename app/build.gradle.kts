@@ -64,23 +64,20 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
+    implementation(libs.androidx.lifecycle.service)
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation("com.quickbirdstudios:opencv:4.5.3.0")
-    implementation("org.osmdroid:osmdroid-android:6.1.17")
     implementation("com.google.android.gms:play-services-location:21.3.0")
-    implementation(libs.androidx.lifecycle.service)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3") // или актуальная версия
+    implementation("org.maplibre.gl:android-sdk:11.10.3")
+    implementation("com.google.accompanist:accompanist-systemuicontroller:0.35.0-alpha")
+    val composeBom = platform("androidx.compose:compose-bom:2024.05.00")
+    implementation(composeBom)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     testImplementation("org.openpnp:opencv:4.5.5-0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3") // или актуальная версия
-    implementation("org.maplibre.gl:android-sdk:11.10.3")
-    implementation("com.google.accompanist:accompanist-systemuicontroller:0.35.0-alpha")
-
-
-    val composeBom = platform("androidx.compose:compose-bom:2024.05.00")
-    implementation(composeBom)
 
     debugImplementation(libs.androidx.ui.tooling)
 }

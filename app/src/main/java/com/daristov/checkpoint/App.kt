@@ -1,6 +1,5 @@
 package com.daristov.checkpoint
 
-import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -8,7 +7,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -19,7 +17,6 @@ import com.daristov.checkpoint.screens.mapscreen.MapScreen
 import com.daristov.checkpoint.screens.PermissionsScreen
 import com.daristov.checkpoint.screens.settings.SettingsScreen
 import org.opencv.android.OpenCVLoader
-import org.osmdroid.config.Configuration
 
 @Composable
 fun App() {
@@ -27,10 +24,6 @@ fun App() {
         Log.e("OpenCV", "Unable to load OpenCV!")
     else
         Log.d("OpenCV", "OpenCV loaded Successfully!")
-
-    val context = LocalContext.current
-    val prefs = context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
-    Configuration.getInstance().load(context, prefs)
 
     var permissionsGranted by remember { mutableStateOf(false) }
 

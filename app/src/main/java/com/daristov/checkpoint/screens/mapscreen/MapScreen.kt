@@ -1,8 +1,7 @@
 package com.daristov.checkpoint.screens.mapscreen
 
-import android.annotation.SuppressLint
 import android.app.Activity
-import android.content.Context
+import android.location.Location
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -30,30 +29,32 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.daristov.checkpoint.R
+import com.daristov.checkpoint.screens.mapscreen.viewmodel.MIN_ZOOM_FOR_TILES_LOAD
 import com.daristov.checkpoint.screens.mapscreen.viewmodel.MapViewModel
 import com.daristov.checkpoint.screens.settings.AppThemeMode
 import com.daristov.checkpoint.screens.settings.SettingsViewModel
-import com.daristov.checkpoint.service.CustomLocationEngine
 import com.daristov.checkpoint.service.LocationRepository
 import com.daristov.checkpoint.util.MapScreenUtils.createBoundingBoxAround
+import com.daristov.checkpoint.util.MapScreenUtils.getMapLibreMapStyleURL
 import com.daristov.checkpoint.util.MapScreenUtils.handleInitialZoomAndSurvey
+import com.daristov.checkpoint.util.MapScreenUtils.loadLocationComponent
 import com.daristov.checkpoint.util.MapScreenUtils.setupInteractionListeners
+import com.daristov.checkpoint.util.MapScreenUtils.setupTrackingButton
 import com.daristov.checkpoint.util.MapScreenUtils.showVisibleCustoms
 import kotlinx.coroutines.delay
 import org.maplibre.android.MapLibre
 import org.maplibre.android.annotations.Marker
 import org.maplibre.android.camera.CameraPosition
-import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.location.LocationComponentActivationOptions
-import org.maplibre.android.location.LocationComponentOptions
-import org.maplibre.android.location.modes.CameraMode
-import org.maplibre.android.location.modes.RenderMode
-import org.maplibre.android.maps.MapLibreMap
-import org.maplibre.android.maps.MapLibreMap.CancelableCallback
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.maps.Style.OnStyleLoaded
+
+const val DEFAULT_MAP_ANIMATION_DURATION = 1000
+const val CUSTOMS_AREA_RADIUS = 2000
+const val DEFAULT_TILT = 50.0
+const val DEFAULT_ZOOM = 17.0
+const val FIRST_CUSTOMS_LOAD_BOUNDINGBOX_SIZE = 100.0
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,28 +63,26 @@ fun MapScreen(navController: NavHostController,
               settingsViewModel: SettingsViewModel = viewModel()) {
     val context = LocalContext.current
     MapLibre.getInstance(context)
-    val theme by settingsViewModel.themeMode.collectAsState()
-    val mapView = rememberConfiguredMapView(theme)
 
-    val isAnimatedToInitialLocation = remember { mutableStateOf(false) }
-    val isNearestCustomFound = remember { mutableStateOf(false) }
+    val isStyleLoaded = remember { mutableStateOf(false) }
+    val isLocationComponentLoaded = remember { mutableStateOf(false) }
+    val initialCustomsLoadRequested = remember { mutableStateOf(false) }
     val isInitialZoomDone = remember { mutableStateOf(false) }
     val needToShowSurvey = remember { mutableStateOf(false) }
     val visibleMarkerIds = remember { mutableSetOf<String>() }
     val existingMarkers = remember { mutableStateMapOf<String, Marker>() }
 
+    val theme by settingsViewModel.themeMode.collectAsState()
     val location by LocationRepository.locationFlow.collectAsState()
-    val nearestCustom by viewModel.nearestCustom.collectAsState()
-    val distance by viewModel.distanceToNearestCustom.collectAsState()
     val customs by viewModel.customs.collectAsState()
 
-    mapView.setupInteractionListeners(context, viewModel, theme, visibleMarkerIds, existingMarkers)
+    val mapView = rememberConfiguredMapView(theme, isStyleLoaded, visibleMarkerIds, existingMarkers)
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Очереди на КПП", color = MaterialTheme.colorScheme.onBackground)
+                    Text("Карта КПП", color = MaterialTheme.colorScheme.onBackground)
                         },
                 actions = {
                     IconButton(onClick = { navController.navigate("settings") }) {
@@ -96,72 +95,45 @@ fun MapScreen(navController: NavHostController,
             )
         }
     ) { padding ->
-        MapContainer(mapView = mapView,
-            navController = navController,
-            viewModel = viewModel,
-            padding = padding,
-            needToShowSurvey = needToShowSurvey)
+        MapContainer(mapView, navController, viewModel, padding, needToShowSurvey, location)
     }
 
     val activity = context as? Activity
-    BackHandler {
-        activity?.moveTaskToBack(true) // Сворачивает приложение
-        // или: activity?.finish() // Закрывает приложение
-    }
-
-    LaunchedEffect(Unit) {
-        mapView.getMapAsync { map ->
-            val bounds = map.projection.visibleRegion.latLngBounds
-            val zoom = map.cameraPosition.zoom
-            viewModel.loadCustomsInVisibleArea(bounds, zoom)
-        }
-    }
+    BackHandler { activity?.finish() }
 
     LaunchedEffect(customs) {
         if (customs.isNotEmpty()) {
-            mapView.showVisibleCustoms(
-                allCustoms = customs,
-                context = context,
-                theme = theme,
-                visibleMarkerIds = visibleMarkerIds,
-                existingMarkers = existingMarkers
-            )
+            mapView.getMapAsync { map ->
+                map.showVisibleCustoms(customs, context, theme, visibleMarkerIds, existingMarkers)
+            }
         }
     }
 
     LaunchedEffect(location) {
+        if (!isStyleLoaded.value || (isLocationComponentLoaded.value && initialCustomsLoadRequested.value)) return@LaunchedEffect
         location?.let {
             mapView.getMapAsync { map ->
-                if (!isAnimatedToInitialLocation.value) {
-                    val userLatLng = LatLng(it.latitude, it.longitude)
-                    map.animateCamera(
-                        CameraUpdateFactory.newCameraPosition(
-                            CameraPosition.Builder()
-                                .tilt(50.0)
-                                .zoom(17.0)
-                                .target(LatLng(it))
-                                .build()
-                        ),
-                        200
-                    )
-                    viewModel.loadCustomsInVisibleArea(userLatLng.createBoundingBoxAround(100.0), 14.0)
-                    isAnimatedToInitialLocation.value = true
+                if (!initialCustomsLoadRequested.value) {
+                    val userLatLng = LatLng(it)
+                    viewModel.loadCustomsInVisibleArea(
+                        userLatLng.createBoundingBoxAround(FIRST_CUSTOMS_LOAD_BOUNDINGBOX_SIZE), MIN_ZOOM_FOR_TILES_LOAD)
+                    initialCustomsLoadRequested.value = true
+                }
+
+                if (!isLocationComponentLoaded.value) {
+                    map.loadLocationComponent(context)
+                    isLocationComponentLoaded.value = true
                 }
             }
         }
     }
 
     LaunchedEffect(location, customs) {
-        if (isNearestCustomFound.value || customs.isEmpty()) return@LaunchedEffect
-        val userPoint = location?.let { LatLng(it) } ?: return@LaunchedEffect
-        viewModel.findAndSetNearestCustom(userPoint)
-        isNearestCustomFound.value = true
-    }
-
-    LaunchedEffect(location, nearestCustom) {
-        if (isInitialZoomDone.value || location == null || nearestCustom == null) return@LaunchedEffect
-        mapView.handleInitialZoomAndSurvey(location!!, nearestCustom!!, distance, needToShowSurvey, viewModel)
-        isInitialZoomDone.value = true
+        if (isInitialZoomDone.value || customs.isEmpty()) return@LaunchedEffect
+        location?.let {
+            mapView.handleInitialZoomAndSurvey(it, needToShowSurvey, viewModel)
+            isInitialZoomDone.value = true
+        }
     }
 }
 
@@ -170,14 +142,13 @@ fun MapContainer(mapView: MapView,
                  navController: NavHostController,
                  viewModel: MapViewModel,
                  padding: PaddingValues,
-                 needToShowSurvey: MutableState<Boolean>) {
+                 needToShowSurvey: MutableState<Boolean>,
+                 location: Location?) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(padding)
     ) {
-        val location by LocationRepository.locationFlow.collectAsState()
-
         AndroidView(
             factory = { mapView },
             modifier = Modifier.fillMaxSize()
@@ -191,33 +162,16 @@ fun MapContainer(mapView: MapView,
                 ),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            IconButton(onClick = {
-                        mapView.getMapAsync { map ->
-                            map.animateCamera(
-                                CameraUpdateFactory.newCameraPosition(
-                                    CameraPosition.Builder()
-                                        .tilt(50.0)
-                                        .zoom(17.0)
-                                        .target(LatLng(location!!))
-                                        .build()
-                                ),
-                                200,
-                                object : CancelableCallback {
-                                    override fun onFinish() {
-                                        map.locationComponent.cameraMode = CameraMode.TRACKING_COMPASS
-                                    }
-                                    override fun onCancel() {
-                                        return
-                                    }
-                                }
-                            )
-                        }
+            IconButton(
+                onClick = {
+                    location?.let { mapView.setupTrackingButton(it) }
                 },
                 modifier = Modifier
                     .size(56.dp)
                     .background(MaterialTheme.colorScheme.background, RoundedCornerShape(16.dp))
             ) {
-                Icon(imageVector = Icons.Default.MyLocation,
+                Icon(
+                    imageVector = Icons.Default.MyLocation,
                     tint = MaterialTheme.colorScheme.onSurface,
                     contentDescription = "Мое местоположение",
                 )
@@ -226,7 +180,8 @@ fun MapContainer(mapView: MapView,
             FloatingActionButton(
                 onClick = { navController.navigate("alarm") }
             ) {
-                Icon(imageVector = Icons.Default.Notifications,
+                Icon(
+                    imageVector = Icons.Default.Notifications,
                     tint = MaterialTheme.colorScheme.onSurface,
                     contentDescription = "Будильник"
                 )
@@ -243,84 +198,39 @@ fun MapContainer(mapView: MapView,
 }
 
 @Composable
-fun rememberConfiguredMapView(theme: AppThemeMode): MapView {
+fun rememberConfiguredMapView(
+    theme: AppThemeMode,
+    isStyleLoaded: MutableState<Boolean>,
+    visibleMarkerIds: MutableSet<String>,
+    existingMarkers: MutableMap<String, Marker>,
+    viewModel: MapViewModel = viewModel()
+): MapView {
     val context = LocalContext.current
-    val location by LocationRepository.locationFlow.collectAsState()
-
     val isSystemInDarkTheme = isSystemInDarkTheme()
-    val apiKey = context.getString(R.string.maptiler_api_key)
     val styleUrl = remember(theme) {
-        val darkStyleUrl = "https://api.maptiler.com/maps/dataviz-dark/style.json?key=$apiKey"
-        val lightStyleUrl = "https://api.maptiler.com/maps/streets/style.json?key=$apiKey"
-        when (theme) {
-            AppThemeMode.DARK -> darkStyleUrl
-            AppThemeMode.LIGHT -> lightStyleUrl
-            AppThemeMode.SYSTEM -> {
-                if (isSystemInDarkTheme) {
-                    return@remember darkStyleUrl
-                } else {
-                    return@remember lightStyleUrl
-                }
-            }
-        }
+        return@remember context.getMapLibreMapStyleURL(theme, isSystemInDarkTheme)
     }
 
     val mapView = remember {
         MapView(context).apply {
             id = R.id.map
             getMapAsync { map ->
+                map.setStyle(Style.Builder().fromUri(styleUrl),
+                    object : OnStyleLoaded {
+                        override fun onStyleLoaded(style: Style) {
+                            isStyleLoaded.value = true
+                        }
+                    })
                 map.cameraPosition = CameraPosition.Builder()
-                    .zoom(17.0)
-                    .tilt(50.0)
+//                    .tilt(DEFAULT_TILT)
+                    .zoom(DEFAULT_ZOOM)
                     .build()
+                map.setupInteractionListeners(context, viewModel, theme, visibleMarkerIds, existingMarkers)
             }
-        }
-    }
-
-    val isStyleLoaded = remember { mutableStateOf(false) }
-    LaunchedEffect(location) {
-        if (isStyleLoaded.value) return@LaunchedEffect
-        location?.let {
-            mapView.getMapAsync { map ->
-                map.setStyle(
-                    Style.Builder().fromUri(styleUrl),
-                    OnStyleLoadedImpl(map, context)
-                )
-            }
-            isStyleLoaded.value = true
         }
     }
 
     return mapView
-}
-
-class OnStyleLoadedImpl(
-    private val map: MapLibreMap,
-    private val context: Context
-) : OnStyleLoaded {
-    @SuppressLint("MissingPermission")
-    override fun onStyleLoaded(style: Style) {
-        map.locationComponent.apply {
-            val customLocationEngine = CustomLocationEngine()
-            activateLocationComponent(
-                LocationComponentActivationOptions.builder(context, style)
-                    .useSpecializedLocationLayer(true)
-                    .locationEngine(customLocationEngine)
-                    .build()
-            )
-            isLocationComponentEnabled = true
-            renderMode = RenderMode.COMPASS
-            cameraMode = CameraMode.TRACKING
-            val options = LocationComponentOptions.builder(context)
-                .pulseEnabled(true)
-                .accuracyAnimationEnabled(true)
-                .compassAnimationEnabled(true)
-                .trackingGesturesManagement(false)
-                .pulseMaxRadius(50f)
-                .build()
-            applyStyle(options)
-        }
-    }
 }
 
 @Composable
