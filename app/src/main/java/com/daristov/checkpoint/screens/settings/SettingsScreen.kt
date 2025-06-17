@@ -45,6 +45,7 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(color = MaterialTheme.colorScheme.surface)
             .padding(top = topPadding, bottom = bottomPadding)
     ) {
         // 🔹 Фиксированная кнопка назад
@@ -63,7 +64,7 @@ fun SettingsScreen(
                 )
             }
             Text("Назад",
-                color = MaterialTheme.colorScheme.onBackground,
+                color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.titleLarge
             )
         }
@@ -130,25 +131,25 @@ fun ThemeSelector(viewModel: SettingsViewModel) {
 
     Text(
         "Тема приложения",
-        color = MaterialTheme.colorScheme.onBackground,
+        color = MaterialTheme.colorScheme.onSurface,
         style = MaterialTheme.typography.titleMedium
     )
     Row(verticalAlignment = Alignment.CenterVertically) {
         RadioButton(selected = current == AppThemeMode.LIGHT, onClick = { viewModel.changeTheme(AppThemeMode.LIGHT) })
         Text("Светлая",
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(end = 8.dp)
         )
 
         RadioButton(selected = current == AppThemeMode.DARK, onClick = { viewModel.changeTheme(AppThemeMode.DARK) })
         Text("Тёмная",
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(end = 8.dp)
         )
 
         RadioButton(selected = current == AppThemeMode.SYSTEM, onClick = { viewModel.changeTheme(AppThemeMode.SYSTEM) })
         Text("Система",
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(end = 8.dp)
         )
     }
@@ -186,7 +187,7 @@ fun HorizontalCompressionSensitivitySlider(viewModel: SettingsViewModel) {
         .padding(horizontal = 16.dp, vertical = 12.dp)) {
 
         Text("Насколько машина должна сместиться вверх чтобы сработал будильник?",
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.titleMedium
         )
 
@@ -203,7 +204,7 @@ fun HorizontalCompressionSensitivitySlider(viewModel: SettingsViewModel) {
         }
 
         Text("Текущее значение: $sensitivity ($label)",
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -217,7 +218,7 @@ fun VerticalMovementSensitivitySlider(viewModel: SettingsViewModel) {
         .padding(horizontal = 16.dp, vertical = 12.dp)) {
 
         Text("Насколько должна уменьшиться машина чтобы сработал будильник?",
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.titleMedium
         )
 
@@ -234,7 +235,7 @@ fun VerticalMovementSensitivitySlider(viewModel: SettingsViewModel) {
         }
 
         Text("Текущее значение: $sensitivity ($label)",
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.onSurface
             )
     }
 }
@@ -248,7 +249,7 @@ fun StableTrajectorySensitivitySlider(viewModel: SettingsViewModel) {
         .padding(horizontal = 16.dp, vertical = 12.dp)) {
 
         Text("Насколько стабильным должно быть движение машины?",
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.titleMedium
         )
 
@@ -265,7 +266,7 @@ fun StableTrajectorySensitivitySlider(viewModel: SettingsViewModel) {
         }
 
         Text("Текущий уровень: $sensitivity ($label)",
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.onSurface,
             )
     }
 }
@@ -307,7 +308,7 @@ fun LanguageDropdown(viewModel: SettingsViewModel) {
                 value = labels[currentLang] ?: "",
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Язык интерфейса", color = MaterialTheme.colorScheme.onBackground) },
+                label = { Text("Язык интерфейса", color = MaterialTheme.colorScheme.onSurface) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 modifier = Modifier
                     .menuAnchor()
@@ -322,11 +323,11 @@ fun LanguageDropdown(viewModel: SettingsViewModel) {
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
                 modifier = Modifier
-                    .background(MaterialTheme.colorScheme.background)
+                    .background(MaterialTheme.colorScheme.surface)
             ) {
                 options.forEach { lang ->
                     DropdownMenuItem(
-                        text = { Text(labels[lang] ?: "", color = MaterialTheme.colorScheme.onBackground) },
+                        text = { Text(labels[lang] ?: "", color = MaterialTheme.colorScheme.onSurface) },
                         onClick = {
                             viewModel.changeLanguage(lang)
                             expanded = false
@@ -362,7 +363,7 @@ fun SettingItem(
         )
         Text(
             text = text,
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.weight(1f)
         )

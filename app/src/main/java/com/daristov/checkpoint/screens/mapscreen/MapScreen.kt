@@ -1,7 +1,6 @@
 package com.daristov.checkpoint.screens.mapscreen
 
 import android.app.Activity
-import android.location.Location
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -10,21 +9,26 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -32,22 +36,23 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.daristov.checkpoint.R
-import com.daristov.checkpoint.screens.mapscreen.domain.MapObject
+import com.daristov.checkpoint.screens.mapscreen.domain.CustomMapObject
 import com.daristov.checkpoint.screens.mapscreen.viewmodel.MIN_ZOOM_FOR_TILES_LOAD
 import com.daristov.checkpoint.screens.mapscreen.viewmodel.MapViewModel
+import com.daristov.checkpoint.screens.mapscreen.viewmodel.SURVEY_DISMISSAL_TIMEOUT
 import com.daristov.checkpoint.screens.settings.AppThemeMode
 import com.daristov.checkpoint.screens.settings.SettingsViewModel
 import com.daristov.checkpoint.service.LocationRepository
 import com.daristov.checkpoint.util.MapScreenUtils.createBoundingBoxAround
 import com.daristov.checkpoint.util.MapScreenUtils.getMapLibreMapStyleURL
-import com.daristov.checkpoint.util.MapScreenUtils.handleInitialZoomAndSurvey
+import com.daristov.checkpoint.util.MapScreenUtils.handleInitialZoomDone
+import com.daristov.checkpoint.util.MapScreenUtils.initCustomsLayer
 import com.daristov.checkpoint.util.MapScreenUtils.loadLocationComponent
 import com.daristov.checkpoint.util.MapScreenUtils.setupInteractionListeners
 import com.daristov.checkpoint.util.MapScreenUtils.setupTrackingButton
 import com.daristov.checkpoint.util.MapScreenUtils.showVisibleCustoms
 import kotlinx.coroutines.delay
 import org.maplibre.android.MapLibre
-import org.maplibre.android.annotations.Marker
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
@@ -79,7 +84,7 @@ fun MapScreen(navController: NavHostController,
     val location by LocationRepository.locationFlow.collectAsState()
     val customs by viewModel.customs.collectAsState()
     val currentStep by viewModel.currentStep.collectAsState()
-    val isInitialZoomAndSurveyDone by viewModel.isInitialZoomAndSurveyDone.collectAsState()
+    val isInitialZoomDone by viewModel.isInitialZoomDone.collectAsState()
 
     val mapView = rememberConfiguredMapView(viewModel, theme)
 
@@ -87,7 +92,7 @@ fun MapScreen(navController: NavHostController,
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Карта КПП", color = MaterialTheme.colorScheme.onBackground)
+                    Text("Карта КПП", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleLarge)
                 },
                 actions = {
                     IconButton(onClick = { navController.navigate("settings") }) {
@@ -110,7 +115,7 @@ fun MapScreen(navController: NavHostController,
     LaunchedEffect(customs) {
         if (customs.isNotEmpty()) {
             mapView.getMapAsync { map ->
-                map.showVisibleCustoms(viewModel, context, theme)
+                map.showVisibleCustoms(viewModel)
             }
         }
     }
@@ -137,11 +142,11 @@ fun MapScreen(navController: NavHostController,
 
     LaunchedEffect(location, customs) {
         location?.let {
-            if (currentStep != MapInitStep.LOADING_CUSTOMS || customs.isEmpty() || isInitialZoomAndSurveyDone)
+            if (currentStep != MapInitStep.LOADING_CUSTOMS || customs.isEmpty() || isInitialZoomDone)
                 return@LaunchedEffect
-            mapView.handleInitialZoomAndSurvey(it, viewModel)
+            mapView.handleInitialZoomDone(it, viewModel)
             viewModel.setCurrentStep(MapInitStep.DONE)
-            viewModel.setInitialZoomAndSurveyDone(true)
+            viewModel.setInitialZoomDone(true)
         }
     }
 }
@@ -151,10 +156,12 @@ fun MapContainer(mapView: MapView,
                  navController: NavHostController,
                  viewModel: MapViewModel,
                  padding: PaddingValues) {
-    val needToShowSurvey by viewModel.needToShowSurvey.collectAsState()
+    val inCustomArea by viewModel.insideCustomArea.collectAsState()
     val currentStep by viewModel.currentStep.collectAsState()
-    val isInitialZoomAndSurveyDone by viewModel.isInitialZoomAndSurveyDone.collectAsState()
+    val isInitialZoomDone by viewModel.isInitialZoomDone.collectAsState()
     val location by LocationRepository.locationFlow.collectAsState()
+    val selectedCustomId by viewModel.selectedCustomId.collectAsState()
+    val isSurveyVisible by viewModel.isSurveyVisible.collectAsState()
 
     Box(
         modifier = Modifier
@@ -165,48 +172,94 @@ fun MapContainer(mapView: MapView,
             factory = { mapView },
             modifier = Modifier.fillMaxSize()
         )
-        if (!isInitialZoomAndSurveyDone) MapLoadingIndicator(message = currentStep.message)
+
+        if (!isInitialZoomDone)
+            MapLoadingIndicator(message = currentStep.message)
+
         Row(
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(
-                    end = 16.dp,
-                    bottom = 16.dp
-                ),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Bottom
         ) {
-            IconButton(
-                onClick = {
-                    location?.let { mapView.setupTrackingButton(it) }
-                },
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(MaterialTheme.colorScheme.background, RoundedCornerShape(16.dp))
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MyLocation,
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    contentDescription = "Мое местоположение",
+            if (selectedCustomId != null) {
+                CustomInfoCard(
+                    viewModel = viewModel,
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
+                            RoundedCornerShape(16.dp)
+                        )
+                        .padding(12.dp),
+                    customId = selectedCustomId!!
                 )
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
             }
 
-            FloatingActionButton(
-                onClick = { navController.navigate("alarm") }
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.End
             ) {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    contentDescription = "Будильник"
-                )
+                inCustomArea?.let {
+                    IconButton(
+                        onClick = {
+                            viewModel.openChatScreen(it.id)
+                        },
+                        modifier = Modifier
+                            .size(56.dp)
+                            .background(
+                                MaterialTheme.colorScheme.surface,
+                                RoundedCornerShape(16.dp)
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Chat,
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            contentDescription = "Чат",
+                        )
+                    }
+                }
+
+                IconButton(
+                    onClick = {
+                        location?.let { mapView.setupTrackingButton(it) }
+                    },
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MyLocation,
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        contentDescription = "Мое местоположение",
+                    )
+                }
+
+                FloatingActionButton(
+                    onClick = { navController.navigate("alarm") }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Notifications,
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        contentDescription = "Будильник"
+                    )
+                }
             }
         }
-        QueueSurveyManager(
-            isUserInQueue = needToShowSurvey,
-            onAnswer = { minutes ->
-                viewModel.sendSurveyAnswer(minutes)
-            },
-            modifier = Modifier.align(Alignment.TopCenter)
-        )
+
+        inCustomArea?.let {
+            if (isSurveyVisible)
+                SurveyPanel(
+                    viewModel = viewModel,
+                    inCustomArea = it,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                )
+        }
     }
 }
 
@@ -221,6 +274,7 @@ fun rememberConfiguredMapView(
         return@remember context.getMapLibreMapStyleURL(theme, isSystemInDarkTheme)
     }
 
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
     val mapView = remember {
         MapView(context).apply {
             id = R.id.map
@@ -228,13 +282,14 @@ fun rememberConfiguredMapView(
                 map.setStyle(Style.Builder().fromUri(styleUrl),
                     object : OnStyleLoaded {
                         override fun onStyleLoaded(style: Style) {
+                            style.initCustomsLayer(context, theme, onSurfaceColor)
                             viewModel.setCurrentStep(MapInitStep.LOADING_LOCATION)
                         }
                     })
                 map.cameraPosition = CameraPosition.Builder()
                     .zoom(DEFAULT_ZOOM)
                     .build()
-                map.setupInteractionListeners(context, viewModel, theme)
+                map.setupInteractionListeners(viewModel)
             }
         }
     }
@@ -242,84 +297,88 @@ fun rememberConfiguredMapView(
     return mapView
 }
 
+
 @Composable
 fun SurveyPanel(
-    onAnswer: (Int) -> Unit,
-    onDismiss: () -> Unit,
+    viewModel: MapViewModel,
+    inCustomArea: CustomMapObject,
     modifier: Modifier = Modifier
 ) {
-    val options = listOf(0, 10, 30, 60, 120)
-    LaunchedEffect(Unit) {
-        delay(10_000)
-        onDismiss()
+    var sliderValue by remember { mutableFloatStateOf(50f) }
+    var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    LaunchedEffect(lastInteractionTime) {
+        delay(SURVEY_DISMISSAL_TIMEOUT)
+        val now = System.currentTimeMillis()
+        if (now - lastInteractionTime >= SURVEY_DISMISSAL_TIMEOUT) {
+            viewModel.dismissSurveyTemporarily()
+        }
     }
 
     Box(
         modifier = modifier
             .padding(16.dp)
-            .background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp))
-            .padding(12.dp)
+            .background(
+                MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
+                RoundedCornerShape(16.dp)
+            )
+            .padding(16.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Подскажите пожалуйста сколько примерно сейчас в очереди машин?",
-                color = MaterialTheme.colorScheme.onBackground
+            Text(
+                text = "Сколько примерно сейчас в очереди машин или какое примерно время ожидания на КПП ${inCustomArea.name}?",
+                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.titleMedium
             )
-            for (i in options.indices) {
-                val value = options[i]
-                Button(onClick = { onAnswer(value) },
-                    modifier = Modifier.fillMaxWidth(),
+
+            Slider(
+                value = sliderValue,
+                onValueChange = {
+                    sliderValue = it
+                    lastInteractionTime = System.currentTimeMillis()
+                                },
+                valueRange = 0f..200f,
+                steps = 200,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Row(modifier = Modifier
+                .fillMaxWidth()
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        viewModel.sendQueueSize(sliderValue.toInt())
+                    },
+                    modifier = Modifier
+                        .height(48.dp)
+                        .weight(0.5f)
+                        .padding(horizontal = 16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface),
+                    border = ButtonDefaults.outlinedButtonBorder
                 ) {
-                    if (i != options.lastIndex)
-                        Text("$value – ${options[i + 1]}",
-                            color = MaterialTheme.colorScheme.onBackground)
-                    else
-                        Text("> $value",
-                            color = MaterialTheme.colorScheme.onBackground)
+                    Text("${sliderValue.toInt()} машин",
+                        style = MaterialTheme.typography.bodyLarge)
+                }
+                OutlinedButton(
+                    onClick = {
+                        viewModel.sendWaitTimeMinutes(sliderValue.toInt())
+                              },
+                    modifier = Modifier
+                        .height(48.dp)
+                        .weight(0.5f)
+                        .padding(horizontal = 16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface),
+                    border = ButtonDefaults.outlinedButtonBorder
+                ) {
+                    Text("${sliderValue.toInt() / 10} часов",
+                        style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }
-    }
-}
-
-@Composable
-fun QueueSurveyManager(
-    isUserInQueue: Boolean,
-    onAnswer: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var showSurvey by remember { mutableStateOf(false) }
-    var lastShownTime by remember { mutableLongStateOf(0L) }
-    var answered by remember { mutableStateOf(false) }
-
-    LaunchedEffect(isUserInQueue, answered) {
-        while (isUserInQueue && !answered) {
-            val now = System.currentTimeMillis()
-            if (!showSurvey && now - lastShownTime > 30_000) {
-                showSurvey = true
-                lastShownTime = now
-                delay(10_000)
-                showSurvey = false
-            } else {
-                delay(1_000) // частота проверок
-            }
-        }
-    }
-
-    if (showSurvey && !answered) {
-        SurveyPanel(
-            modifier = modifier,
-            onAnswer = {
-                answered = true
-                onAnswer(it)
-            },
-            onDismiss = {
-                showSurvey = false
-            }
-        )
     }
 }
 
@@ -336,7 +395,7 @@ fun MapLoadingIndicator(message: String, modifier: Modifier = Modifier) {
         Row(
             modifier = Modifier
                 .background(
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                    color = MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
                     shape = RoundedCornerShape(16.dp)
                 )
                 .padding(horizontal = 20.dp, vertical = 12.dp),
@@ -347,15 +406,71 @@ fun MapLoadingIndicator(message: String, modifier: Modifier = Modifier) {
                 .offset(y = 1.dp) // можно подкорректировать вручную
             ) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 3.dp
                 )
             }
             Text(
                 text = message,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
+        }
+    }
+}
+
+@Composable
+fun CustomInfoCard(
+    viewModel: MapViewModel,
+    modifier: Modifier,
+    customId: String
+) {
+    val custom = viewModel.getCustomMapObject(customId)
+    if (custom == null) return
+
+    Box(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column {
+            Row(modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = custom.name,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = "Очередь: ${custom.queueSize} машин",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(text = "Ожидание: ${custom.waitTimeMinutes} мин.",
+                style = MaterialTheme.typography.bodyLarge
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { (custom.queueSize / 100f).coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.onBackground
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = {
+                    viewModel.openChatScreen(custom.id)
+                },
+                modifier = Modifier.align(Alignment.End),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface),
+                border = ButtonDefaults.outlinedButtonBorder
+            ) {
+                Text("Посмотреть чат",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
         }
     }
 }

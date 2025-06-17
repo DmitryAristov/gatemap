@@ -5,7 +5,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.daristov.checkpoint.screens.mapscreen.MapInitStep
-import com.daristov.checkpoint.screens.mapscreen.domain.MapObject
+import com.daristov.checkpoint.screens.mapscreen.domain.CustomMapObject
 import com.daristov.checkpoint.service.LocationRepository
 import com.daristov.checkpoint.service.OverpassAPI
 import kotlinx.coroutines.channels.Channel
@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import org.maplibre.android.annotations.Marker
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import kotlin.collections.plus
@@ -23,17 +22,20 @@ import kotlin.math.floor
 const val CUSTOMS_TILE_SIZE_DEGREES = 1.0
 const val CUSTOMS_TILE_REQUEST_DELAY_MS = 100L
 const val MIN_ZOOM_FOR_TILES_LOAD = 9.0
+const val SURVEY_DISMISSAL_TIMEOUT = 5_000L
+const val SURVEY_REENABLE_TIMEOUT = 20_000L
 
 class MapViewModel : ViewModel() {
 
     private val overpassAPI: OverpassAPI = OverpassAPI()
     private val _location = MutableStateFlow<Location?>(null)
-    private val _customs = MutableStateFlow<List<MapObject>>(emptyList())
+    private val _customs = MutableStateFlow<List<CustomMapObject>>(emptyList())
     private val _currentStep = MutableStateFlow<MapInitStep>(MapInitStep.LOADING_MAP)
-    private val _needToShowSurvey = MutableStateFlow<Boolean>(false)
-    private val _isInitialZoomAndSurveyDone = MutableStateFlow<Boolean>(false)
+    private val _insideCustomArea = MutableStateFlow<CustomMapObject?>(null)
+    private val _isInitialZoomDone = MutableStateFlow<Boolean>(false)
     private val _visibleMarkerIds = MutableStateFlow<MutableSet<String>>(mutableSetOf())
-    private val _existingMarkers = MutableStateFlow<MutableMap<String, Marker>>(mutableMapOf())
+    private val _selectedCustomId = MutableStateFlow<String?>(null)
+    private val _isSurveyVisible = MutableStateFlow(true)
 
     private val loadedTiles = mutableSetOf<TileKey>()
     private val loadingTiles = mutableSetOf<TileKey>()
@@ -48,12 +50,13 @@ class MapViewModel : ViewModel() {
         startTileLoader()
     }
 
-    val customs: StateFlow<List<MapObject>> = _customs
+    val customs: StateFlow<List<CustomMapObject>> = _customs
     val currentStep: StateFlow<MapInitStep> = _currentStep
-    val isInitialZoomAndSurveyDone: StateFlow<Boolean> = _isInitialZoomAndSurveyDone
-    val needToShowSurvey: StateFlow<Boolean> = _needToShowSurvey
+    val isInitialZoomDone: StateFlow<Boolean> = _isInitialZoomDone
+    val insideCustomArea: StateFlow<CustomMapObject?> = _insideCustomArea
     val visibleMarkerIds: StateFlow<MutableSet<String>> = _visibleMarkerIds
-    val existingMarkers: StateFlow<MutableMap<String, Marker>> = _existingMarkers
+    val selectedCustomId: StateFlow<String?> = _selectedCustomId
+    val isSurveyVisible: StateFlow<Boolean> = _isSurveyVisible
 
     fun loadCustomsInVisibleArea(bounds: LatLngBounds, zoom: Double) {
         if (zoom < MIN_ZOOM_FOR_TILES_LOAD) {
@@ -103,7 +106,7 @@ class MapViewModel : ViewModel() {
         }
     }
 
-    fun findNearestCustoms(from: LatLng, count: Int = 4): List<MapObject> {
+    fun findNearestCustoms(from: LatLng, count: Int = 4): List<CustomMapObject> {
         return customs.value
             .sortedBy { it.location.distanceTo(from) }
             .take(count)
@@ -117,40 +120,24 @@ class MapViewModel : ViewModel() {
         return currentStep.value
     }
 
-    fun setInitialZoomAndSurveyDone(done: Boolean) {
-        _isInitialZoomAndSurveyDone.value = done
+    fun setInitialZoomDone(done: Boolean) {
+        _isInitialZoomDone.value = done
     }
 
-    fun setNeedToShowSurvey(show: Boolean) {
-        _needToShowSurvey.value = show
+    fun setInsideCustomArea(custom: CustomMapObject) {
+        _insideCustomArea.value = custom
     }
 
     fun getVisibleMarkerIds(): MutableSet<String> {
         return _visibleMarkerIds.value
     }
 
-    fun getExistingMarkers(): MutableMap<String, Marker> {
-        return _existingMarkers.value
+    fun onCustomSelected(customId: String) {
+        _selectedCustomId.value = customId
     }
 
-    fun removeVisibleMarkerId(id: String) {
-        _visibleMarkerIds.value.remove(id)
-    }
-
-    fun removeExistingMarker(id: String) {
-        _existingMarkers.value.remove(id)
-    }
-
-    fun addVisibleMarkerId(id: String) {
-        _visibleMarkerIds.value.add(id)
-    }
-
-    fun addExistingMarker(id: String, marker: Marker) {
-        _existingMarkers.value[id] = marker
-    }
-
-    fun containsVisibleMarkerId(id: String): Boolean {
-        return _visibleMarkerIds.value.contains(id)
+    fun clearSelectedCustom() {
+        _selectedCustomId.value = null
     }
 
     fun latToTileY(lat: Double): Int = floor(lat / CUSTOMS_TILE_SIZE_DEGREES).toInt()
@@ -162,8 +149,35 @@ class MapViewModel : ViewModel() {
         return LatLng(lat, lon)
     }
 
-    fun sendSurveyAnswer(answer: Int) {
-        //TODO: send answer to server
+    fun setSurveyVisible(visible: Boolean) {
+        _isSurveyVisible.value = visible
+    }
+
+    fun dismissSurveyTemporarily() {
+        _isSurveyVisible.value = false
+        viewModelScope.launch {
+            delay(SURVEY_REENABLE_TIMEOUT)
+            _isSurveyVisible.value = true
+        }
+    }
+
+    //TODO: send to server
+    fun sendQueueSize(value: Int) {
+        _isSurveyVisible.value = false
+    }
+
+    //TODO: send to server
+    fun sendWaitTimeMinutes(value: Int) {
+        _isSurveyVisible.value = false
+    }
+
+    fun openChatScreen(string: String) {
+        return
+        //TODO("Not yet implemented")
+    }
+
+    fun getCustomMapObject(customId: String): CustomMapObject? {
+        return customs.value.find { it.id == customId }
     }
 
     data class TileKey(val x: Int, val y: Int) {

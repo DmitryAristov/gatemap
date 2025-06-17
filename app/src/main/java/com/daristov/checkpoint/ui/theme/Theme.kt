@@ -1,7 +1,6 @@
 package com.daristov.checkpoint.ui.theme
 
 import android.app.Activity
-import android.content.Context
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -10,21 +9,36 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
-import androidx.datastore.preferences.core.stringPreferencesKey
 import com.daristov.checkpoint.screens.settings.AppThemeMode
-import com.daristov.checkpoint.screens.settings.dataStore
-import kotlinx.coroutines.flow.first
 
-private val LightColors = lightColorScheme(
+//private val LightColors = lightColorScheme(
+//    primary = LightPrimary,
+//    secondary = LightSecondary,
+//    background = LightBackground,
+//    surface = LightSurface
+//)
+//
+//private val DarkColors = darkColorScheme(
+//    primary = DarkPrimary,
+//    secondary = DarkSecondary,
+//    background = DarkBackground,
+//    surface = DarkSurface
+//)
+
+val LightColors = lightColorScheme(
     primary = LightPrimary,
-    secondary = LightSecondary,
-    background = LightBackground
+    background = LightBackground,
+    onBackground = LightOnBackground,
+    surface = LightSurface,
+    onSurface = LightOnSurface
 )
 
-private val DarkColors = darkColorScheme(
+val DarkColors = darkColorScheme(
     primary = DarkPrimary,
-    secondary = DarkSecondary,
-    background = DarkBackground
+    background = DarkBackground,
+    onBackground = DarkOnBackground,
+    surface = DarkSurface,
+    onSurface = DarkOnSurface
 )
 
 @Composable

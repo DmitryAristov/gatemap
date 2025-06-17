@@ -23,7 +23,7 @@ fun AboutScreen(navController: NavHostController) {
     Scaffold(topBar = {
         TopAppBar(
             title = {
-                Text("О приложении", color = MaterialTheme.colorScheme.onBackground)
+                Text("О приложении", color = MaterialTheme.colorScheme.onSurface)
                     },
             navigationIcon = {
                 IconButton(onClick = { navController.popBackStack() }) {

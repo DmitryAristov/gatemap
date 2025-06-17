@@ -21,7 +21,7 @@ import androidx.navigation.NavHostController
 @Composable
 fun CustomsListScreen(navController: NavHostController) {
     Scaffold(topBar = {
-        TopAppBar(title = { Text("Список КПП") },
+        TopAppBar(title = { Text("Список КПП", color = MaterialTheme.colorScheme.surface) },
             navigationIcon = {
                 IconButton(onClick = { navController.popBackStack() }) {
                     Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack,

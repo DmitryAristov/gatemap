@@ -2,17 +2,15 @@ package com.daristov.checkpoint.util
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Color
 import android.location.Location
 import android.util.SizeF
 import androidx.annotation.DrawableRes
 import androidx.core.content.ContextCompat
 import com.daristov.checkpoint.R
-import com.daristov.checkpoint.screens.mapscreen.domain.MapObject
 import com.daristov.checkpoint.screens.mapscreen.viewmodel.MapViewModel
 import com.daristov.checkpoint.screens.settings.AppThemeMode
-import org.maplibre.android.annotations.IconFactory
-import org.maplibre.android.annotations.Marker
-import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
 import androidx.core.graphics.drawable.toBitmap
@@ -20,8 +18,8 @@ import com.daristov.checkpoint.screens.mapscreen.CUSTOMS_AREA_RADIUS
 import com.daristov.checkpoint.screens.mapscreen.DEFAULT_MAP_ANIMATION_DURATION
 import com.daristov.checkpoint.screens.mapscreen.DEFAULT_TILT
 import com.daristov.checkpoint.screens.mapscreen.DEFAULT_ZOOM
+import com.daristov.checkpoint.screens.mapscreen.domain.CustomMapObject
 import com.daristov.checkpoint.service.CustomLocationEngine
-import org.maplibre.android.annotations.Icon
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLngBounds
@@ -31,7 +29,21 @@ import org.maplibre.android.location.modes.CameraMode
 import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapLibreMap.CancelableCallback
-import kotlin.collections.set
+import org.maplibre.android.maps.Style
+import org.maplibre.android.style.expressions.Expression.get
+import org.maplibre.android.style.layers.PropertyFactory.iconAllowOverlap
+import org.maplibre.android.style.layers.PropertyFactory.iconAnchor
+import org.maplibre.android.style.layers.PropertyFactory.iconImage
+import org.maplibre.android.style.layers.PropertyFactory.textAnchor
+import org.maplibre.android.style.layers.PropertyFactory.textColor
+import org.maplibre.android.style.layers.PropertyFactory.textField
+import org.maplibre.android.style.layers.PropertyFactory.textSize
+import org.maplibre.android.style.layers.SymbolLayer
+import org.maplibre.android.style.sources.GeoJsonSource
+import org.maplibre.geojson.Feature
+import org.maplibre.geojson.FeatureCollection
+import org.maplibre.geojson.Point
+import kotlin.collections.map
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -40,13 +52,13 @@ import kotlin.math.ln
 import kotlin.math.log2
 import kotlin.math.sin
 
+private const val CUSTOMS_LAYER = "customs-layer"
+private const val CUSTOMS_SOURCE = "customs-source"
+private const val CUSTOMS_ICON = "customs-icon"
+
 object MapScreenUtils {
 
-    fun MapLibreMap.setupInteractionListeners(
-        context: Context,
-        viewModel: MapViewModel,
-        theme: AppThemeMode,
-    ) {
+    fun MapLibreMap.setupInteractionListeners(viewModel: MapViewModel) {
         val minIntervalMs = 100L
         var lastUpdate = 0L
 
@@ -59,54 +71,94 @@ object MapScreenUtils {
             val zoom = cameraPosition.zoom
             viewModel.loadCustomsInVisibleArea(bounds, zoom)
 
-            showVisibleCustoms(viewModel, context, theme)
+            showVisibleCustoms(viewModel)
+        }
+
+        addOnMapClickListener { point ->
+            val screenPoint = projection.toScreenLocation(point)
+            val features = queryRenderedFeatures(screenPoint, CUSTOMS_LAYER)
+
+            if (features.isNotEmpty()) {
+                val selected = features.first()
+                val customId = selected.getStringProperty("id")
+                viewModel.onCustomSelected(customId)
+                return@addOnMapClickListener true
+            } else {
+                viewModel.clearSelectedCustom()
+                return@addOnMapClickListener true
+            }
+        }
+
+        addOnCameraMoveListener {  ->
+            if (viewModel.selectedCustomId.value != null) {
+                viewModel.clearSelectedCustom()
+                return@addOnCameraMoveListener
+            }
         }
     }
 
-    fun MapLibreMap.showVisibleCustoms(
-        viewModel: MapViewModel,
-        context: Context,
-        theme: AppThemeMode
-    ) {
+    fun MapLibreMap.showVisibleCustoms(viewModel: MapViewModel) {
         val customs = viewModel.customs.value
-        val existingMarkers = viewModel.existingMarkers.value
         val visibleMarkerIds = viewModel.visibleMarkerIds.value
         val bounds = projection.visibleRegion.latLngBounds
 
-        val customsMap = customs.associateBy { it.id }
         val toRemove = visibleMarkerIds.filterNot { id ->
-            val custom = customsMap[id] ?: return@filterNot true
+            val custom = customs.find { it.id == id } ?: return@filterNot false
             bounds.contains(LatLng(custom.latitude, custom.longitude))
         }
         toRemove.forEach { id ->
-            existingMarkers[id]?.let { removeMarker(it) }
-            existingMarkers.remove(id)
             visibleMarkerIds.remove(id)
         }
 
-        customsMap.forEach { custom ->
-            if (visibleMarkerIds.contains(custom.key)) return@forEach
-
-            val latLng = LatLng(custom.value.latitude, custom.value.longitude)
+        customs.forEach { custom ->
+            if (visibleMarkerIds.contains(custom.id)) return@forEach
+            val latLng = LatLng(custom.latitude, custom.longitude)
             if (bounds.contains(latLng)) {
-                val icon = createCustomIcon(
-                    context,
-                    if (theme == AppThemeMode.DARK)
-                        R.drawable.ic_custom_dark
-                    else
-                        R.drawable.ic_custom_light
-                )
-
-                val marker = addMarker(
-                    MarkerOptions()
-                        .position(latLng)
-                        .title(custom.value.name)
-                        .icon(icon)
-                )
-
-                existingMarkers[custom.key] = marker
-                visibleMarkerIds.add(custom.key)
+                visibleMarkerIds.add(custom.id)
             }
+        }
+        val newCollection = buildFeatureCollection(
+            customs.filter { visibleMarkerIds.contains(it.id) }
+        )
+        style?.getSourceAs<GeoJsonSource>(CUSTOMS_SOURCE)?.setGeoJson(newCollection)
+    }
+
+    fun buildFeatureCollection(customs: List<CustomMapObject>): FeatureCollection {
+        val features = customs.map {
+            val feature = Feature.fromGeometry(Point.fromLngLat(it.longitude, it.latitude))
+            feature.addStringProperty("id", it.id)
+            feature.addStringProperty("name", it.name)
+            return@map feature
+        }
+        return FeatureCollection.fromFeatures(features)
+    }
+
+    fun Style.initCustomsLayer(context: Context, theme: AppThemeMode, onSurfaceColor: Int) {
+        if (getSource(CUSTOMS_SOURCE) == null) {
+            addSource(GeoJsonSource(CUSTOMS_SOURCE, FeatureCollection.fromFeatures(emptyList())))
+        }
+
+        var iconResourceId = if (theme == AppThemeMode.DARK)
+            R.drawable.ic_custom_dark
+        else
+            R.drawable.ic_custom_light
+        val iconBitmap = createCustomIcon(context, iconResourceId)
+
+        if (getLayer(CUSTOMS_LAYER) == null) {
+            addImage(CUSTOMS_ICON, iconBitmap)
+
+            addLayer(
+                SymbolLayer(CUSTOMS_LAYER, CUSTOMS_SOURCE)
+                    .withProperties(
+                        iconImage(CUSTOMS_ICON),
+                        iconAllowOverlap(true),
+                        iconAnchor("bottom"),
+                        textField(get("name")),
+                        textSize(20f),
+                        textAnchor("top"),
+                        textColor(onSurfaceColor)
+                    )
+            )
         }
     }
 
@@ -136,7 +188,7 @@ object MapScreenUtils {
         }
     }
 
-    fun MapView.handleInitialZoomAndSurvey(
+    fun MapView.handleInitialZoomDone(
         location: Location,
         viewModel: MapViewModel
     ) {
@@ -146,8 +198,8 @@ object MapScreenUtils {
         val distance = userLatLng.distanceTo(nearestCustomLatLng)
 
         if (distance < CUSTOMS_AREA_RADIUS) {
-            viewModel.setNeedToShowSurvey(true)
             val nearest = viewModel.findNearestCustoms(userLatLng, 1)
+            viewModel.setInsideCustomArea(nearest.first())
             zoomToCustoms(userLatLng, nearest.map { LatLng(it.latitude, it.longitude) })
         } else {
             val nearest = viewModel.findNearestCustoms(userLatLng)
@@ -177,7 +229,7 @@ object MapScreenUtils {
         val heading = computeHeading(userLatLng, nearest.first())
         val bearing = (heading + 360) % 360
         val target = nearest.first()
-        val t = 0.7
+        val t = 0.75
         val offset = LatLng(
             latitude = target.latitude + (userLatLng.latitude - target.latitude) * t,
             longitude = target.longitude + (userLatLng.longitude - target.longitude) * t
@@ -225,7 +277,7 @@ object MapScreenUtils {
         val latZoom = zoom(effectiveMapHeight, WORLD_DIM.height, latFraction)
         val lngZoom = zoom(effectiveMapWidth, WORLD_DIM.width, lngFraction)
 
-        return minOf(latZoom, lngZoom, ZOOM_MAX.toDouble()) * 0.95
+        return minOf(latZoom, lngZoom, ZOOM_MAX.toDouble()) * 0.9
     }
 
     fun computeHeading(from: LatLng, to: LatLng): Double {
@@ -299,9 +351,8 @@ object MapScreenUtils {
             .build()
     }
 
-    fun createCustomIcon(context: Context, @DrawableRes resId: Int): Icon {
+    fun createCustomIcon(context: Context, @DrawableRes resId: Int): Bitmap {
         val drawable = ContextCompat.getDrawable(context, resId) ?: error("Drawable not found")
-        val bitmap = drawable.toBitmap()
-        return IconFactory.getInstance(context).fromBitmap(bitmap)
+        return drawable.toBitmap()
     }
 }

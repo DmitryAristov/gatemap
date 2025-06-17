@@ -2,16 +2,13 @@ package com.daristov.checkpoint.screens.mapscreen.domain
 
 import org.maplibre.android.geometry.LatLng
 
-data class MapObject(
+data class CustomMapObject(
     val id: String,
     val name: String,
-    val type: ObjectType,
+    val queueSize: Int = 0,
+    val waitTimeMinutes: Int = 0,
     val latitude: Double,
     val longitude: Double
 ) {
     val location: LatLng get() = LatLng(latitude, longitude)
-}
-
-enum class ObjectType {
-    CUSTOMS
 }

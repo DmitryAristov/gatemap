@@ -33,8 +33,8 @@ fun RingtonePicker(context: Context, selectedUri: Uri?, onPicked: (Uri) -> Unit)
             launcher.launch(intent)
         },
         colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
         )
     ) {
         Text("Выбрать мелодию будильника", color = MaterialTheme.colorScheme.onBackground)

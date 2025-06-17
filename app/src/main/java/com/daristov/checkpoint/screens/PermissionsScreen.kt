@@ -71,8 +71,8 @@ fun PermissionsScreen(
             Button(
                 onClick = { permissionLauncher.launch(permissions.toTypedArray()) },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
                 Text("Предоставить доступ", color = MaterialTheme.colorScheme.onBackground)

@@ -1,8 +1,7 @@
 package com.daristov.checkpoint.service
 
 import android.util.Log
-import com.daristov.checkpoint.screens.mapscreen.domain.MapObject
-import com.daristov.checkpoint.screens.mapscreen.domain.ObjectType
+import com.daristov.checkpoint.screens.mapscreen.domain.CustomMapObject
 import com.daristov.checkpoint.screens.mapscreen.viewmodel.MapViewModel.TileKey
 import com.daristov.checkpoint.screens.mapscreen.viewmodel.CUSTOMS_TILE_SIZE_DEGREES
 import kotlinx.coroutines.Dispatchers
@@ -14,7 +13,7 @@ import java.net.URLEncoder
 
 class OverpassAPI {
 
-    internal suspend fun loadTile(tile: TileKey): List<MapObject> {
+    internal suspend fun loadTile(tile: TileKey): List<CustomMapObject> {
         val tileBounds = tileToBoundingBox(tile)
         val result = withContext(Dispatchers.IO) {
             val query = """
@@ -34,8 +33,8 @@ class OverpassAPI {
         return result
     }
 
-    fun parseOverpassResponse(json: String): List<MapObject> {
-        val list = mutableListOf<MapObject>()
+    fun parseOverpassResponse(json: String): List<CustomMapObject> {
+        val list = mutableListOf<CustomMapObject>()
 
         try {
             val root = JSONObject(json)
@@ -52,10 +51,9 @@ class OverpassAPI {
                 val tags = el.optJSONObject("tags")
                 val name = tags?.optString("name", "КПП") ?: "КПП"
 
-                list += MapObject(
+                list += CustomMapObject(
                     id = el.optLong("id", 0L).toString(),
                     name = name,
-                    type = ObjectType.CUSTOMS,
                     latitude = lat,
                     longitude = lon
                 )
