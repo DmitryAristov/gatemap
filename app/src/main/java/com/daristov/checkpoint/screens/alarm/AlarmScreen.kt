@@ -39,8 +39,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -233,6 +236,93 @@ fun DrawRearLightsOverlay(
         // Смещение, чтобы центрировать изображение
         val offsetX = (size.width - scaledWidth) / 2f
         val offsetY = (size.height - scaledHeight) / 2f
+
+        val leftRect = rects.left
+        val rightRect = rects.right
+
+        val leftBottom = Offset(
+            leftRect.x * scale + offsetX - 50f,
+            (leftRect.y + leftRect.height) * scale + offsetY
+        )
+        val rightBottom = Offset(
+            (rightRect.x + rightRect.width) * scale + offsetX + 50f,
+            (rightRect.y + rightRect.height) * scale + offsetY
+        )
+
+        val squareWidth = rightBottom.x - leftBottom.x
+        val squareHeight = squareWidth // квадрат
+        val cornerRadius = 100f
+
+        val topLeft = Offset(leftBottom.x, leftBottom.y - squareHeight)
+        val topRight = Offset(rightBottom.x, rightBottom.y - squareHeight)
+
+        val path = Path().apply {
+            moveTo(topLeft.x + cornerRadius, topLeft.y)
+
+            // Верхняя сторона с правым верхним скруглением
+            lineTo(topRight.x - cornerRadius, topRight.y)
+            arcTo(
+                rect = Rect(
+                    topRight.x - 2 * cornerRadius,
+                    topRight.y,
+                    topRight.x,
+                    topRight.y + 2 * cornerRadius
+                ),
+                startAngleDegrees = -90f,
+                sweepAngleDegrees = 90f,
+                forceMoveTo = false
+            )
+
+            // Правая сторона с правым нижним скруглением
+            lineTo(rightBottom.x, rightBottom.y - cornerRadius)
+            arcTo(
+                rect = Rect(
+                    rightBottom.x - 2 * cornerRadius,
+                    rightBottom.y - 2 * cornerRadius,
+                    rightBottom.x,
+                    rightBottom.y
+                ),
+                startAngleDegrees = 0f,
+                sweepAngleDegrees = 90f,
+                forceMoveTo = false
+            )
+
+            // Нижняя сторона с левым нижним скруглением
+            lineTo(leftBottom.x + cornerRadius, leftBottom.y)
+            arcTo(
+                rect = Rect(
+                    leftBottom.x,
+                    leftBottom.y - 2 * cornerRadius,
+                    leftBottom.x + 2 * cornerRadius,
+                    leftBottom.y
+                ),
+                startAngleDegrees = 90f,
+                sweepAngleDegrees = 90f,
+                forceMoveTo = false
+            )
+
+            // Левая сторона с левым верхним скруглением
+            lineTo(topLeft.x, topLeft.y + cornerRadius)
+            arcTo(
+                rect = Rect(
+                    topLeft.x,
+                    topLeft.y,
+                    topLeft.x + 2 * cornerRadius,
+                    topLeft.y + 2 * cornerRadius
+                ),
+                startAngleDegrees = 180f,
+                sweepAngleDegrees = 90f,
+                forceMoveTo = false
+            )
+
+            close()
+        }
+
+        drawPath(
+            path = path,
+            color = color.copy(alpha = 0.35f),
+            style = Fill
+        )
 
         for (rect in listOf(rects.left, rects.right)) {
             val left = rect.x * scale + offsetX
