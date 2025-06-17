@@ -17,8 +17,8 @@ enum class AppLanguage { RU, KZ, EN }
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val pref = SettingsPreferenceManager(application.applicationContext)
     private val _themeMode = MutableStateFlow(AppThemeMode.SYSTEM)
-    private val _verticalMovementSensitivity = MutableStateFlow(80)
-    private val _horizontalCompressionSensitivity = MutableStateFlow(80)
+    private val _verticalMovementSensitivity = MutableStateFlow(50)
+    private val _horizontalCompressionSensitivity = MutableStateFlow(50)
     private val _stableTrajectorySensitivity = MutableStateFlow(50)
     private val _language = MutableStateFlow(AppLanguage.RU)
 

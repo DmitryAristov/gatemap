@@ -47,7 +47,7 @@ class SettingsPreferenceManager(private val context: Context) {
     }
 
     fun getVerticalMovementSensitivity(): Flow<Int> = context.dataStore.data.map { prefs ->
-        prefs[VERTICAL_MOVEMENT_SENSITIVITY_KEY] ?: 80
+        prefs[VERTICAL_MOVEMENT_SENSITIVITY_KEY] ?: 50
     }
 
     suspend fun setVerticalMovementSensitivity(value: Int) {
@@ -57,7 +57,7 @@ class SettingsPreferenceManager(private val context: Context) {
     }
 
     fun getHorizontalCompressionSensitivity(): Flow<Int> = context.dataStore.data.map { prefs ->
-        prefs[HORIZONTAL_COMPRESSION_SENSITIVITY_KEY] ?: 80
+        prefs[HORIZONTAL_COMPRESSION_SENSITIVITY_KEY] ?: 50
     }
 
     suspend fun setHorizontalCompressionSensitivity(value: Int) {
