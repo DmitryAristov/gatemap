@@ -3,6 +3,7 @@ package com.daristov.checkpoint.screens.alarm
 import android.app.Application
 import android.hardware.camera2.CameraMetadata
 import android.hardware.camera2.CaptureRequest
+import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
@@ -18,18 +19,22 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -51,30 +56,61 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.navigation.NavHostController
 import com.daristov.checkpoint.screens.alarm.detector.RearLightsDetector
 import com.daristov.checkpoint.screens.alarm.viewmodel.AlarmViewModel
 import com.daristov.checkpoint.screens.alarm.viewmodel.AlarmViewModelFactory
 import com.daristov.checkpoint.screens.settings.SettingsPreferenceManager
 import java.util.concurrent.Executors
 
+@kotlin.OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AlarmScreen(navController: NavHostController) {
+fun AlarmScreen(
+    onBack: () -> Unit,
+    onOpenMenu: () -> Unit,
+) {
     val context = LocalContext.current
     val application = context.applicationContext as Application
     val settingsManager = remember { SettingsPreferenceManager(context) }
     val factory = remember { AlarmViewModelFactory(application, settingsManager) }
     val viewModel: AlarmViewModel = viewModel(factory = factory)
 
-    val state by viewModel.uiState.collectAsState()
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "Датчик движения",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                },
+                actions = {
+                    IconButton(
+                        onClick = onOpenMenu
+                    ) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Меню")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        AlarmContainer(viewModel, padding)
+    }
 
-    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    BackHandler { onBack() }
+}
+
+@Composable
+fun AlarmContainer(
+    viewModel: AlarmViewModel,
+    padding: PaddingValues
+) {
+    val state by viewModel.uiState.collectAsState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = statusBarPadding, bottom = navBarPadding)
+            .padding(padding)
             .background(MaterialTheme.colorScheme.background)
     ) {
         Box(
@@ -115,12 +151,10 @@ fun AlarmScreen(navController: NavHostController) {
             ) {
                 Text(
                     text = if (state.motionDetected) "🚨 Обнаружено движение!" else "🟢 Ожидает",
-                    color = MaterialTheme.colorScheme.onBackground,
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
                     text = if (state.isNight == true) "🌙 Ночь" else "☀️ День",
-                    color = MaterialTheme.colorScheme.onBackground,
                     style = MaterialTheme.typography.bodyLarge.copy(color = Color.White)
                 )
             }

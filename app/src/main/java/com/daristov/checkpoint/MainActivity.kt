@@ -28,12 +28,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        val intent = Intent(this, LocationService::class.java)
-        startService(intent)
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         val intent = Intent(this, LocationService::class.java)

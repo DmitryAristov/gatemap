@@ -63,19 +63,12 @@ fun PermissionsScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                "Для работы приложения требуется доступ к камере и местоположению.",
-                color = MaterialTheme.colorScheme.onBackground
-            )
+            Text("Для работы приложения требуется доступ к камере и местоположению.")
             Spacer(modifier = Modifier.height(16.dp))
             Button(
-                onClick = { permissionLauncher.launch(permissions.toTypedArray()) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
+                onClick = { permissionLauncher.launch(permissions.toTypedArray()) }
             ) {
-                Text("Предоставить доступ", color = MaterialTheme.colorScheme.onBackground)
+                Text("Предоставить доступ")
             }
         }
     }

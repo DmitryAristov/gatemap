@@ -1,337 +1,269 @@
 package com.daristov.checkpoint.screens.settings
 
-import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Sensors
+import androidx.compose.material.icons.filled.Tonality
+import androidx.compose.material.icons.filled._3dRotation
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
-
-const val iconToTextRatio = 2.5f
-
-@Composable
-fun SettingsScreen(
-    navController: NavHostController,
-    viewModel: SettingsViewModel = viewModel()
-) {
-    val context = LocalContext.current
-    val iconSizeDp = getIconSizeDp()
-
-    val topPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(color = MaterialTheme.colorScheme.surface)
-            .padding(top = topPadding, bottom = bottomPadding)
-    ) {
-        // 🔹 Фиксированная кнопка назад
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = { navController.navigate("map") },
-                modifier = Modifier.size(iconSizeDp)
-            ) {
-                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    contentDescription = "Назад"
-                )
-            }
-            Text("Назад",
-                color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.titleLarge
-            )
-        }
-
-        // 🔹 Прокручиваемый контент
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-        ) {
-            Spacer(Modifier.height(12.dp))
-
-            HorizontalDivider(Modifier.padding(vertical = 3.dp))
-            Spacer(Modifier.height(8.dp))
-            ThemeSelector(viewModel)
-
-            HorizontalDivider(Modifier.padding(vertical = 3.dp))
-            Spacer(Modifier.height(8.dp))
-            HorizontalCompressionSensitivitySlider(viewModel)
-
-            HorizontalDivider(Modifier.padding(vertical = 3.dp))
-            Spacer(Modifier.height(8.dp))
-            VerticalMovementSensitivitySlider(viewModel)
-
-            HorizontalDivider(Modifier.padding(vertical = 3.dp))
-            Spacer(Modifier.height(8.dp))
-            StableTrajectorySensitivitySlider(viewModel)
-
-            HorizontalDivider(Modifier.padding(vertical = 3.dp))
-            Spacer(Modifier.height(8.dp))
-            RingtonePicker(
-                context = context,
-                selectedAlarmUri = viewModel.selectedAlarmUri,
-                onPicked = { viewModel.changeAlarmUri(it) }
-            )
-
-            HorizontalDivider(Modifier.padding(vertical = 3.dp))
-            Spacer(Modifier.height(8.dp))
-            LanguageDropdown(viewModel)
-
-            HorizontalDivider(Modifier.padding(vertical = 3.dp))
-            Spacer(Modifier.height(8.dp))
-            AboutItem(navController)
-
-            Spacer(Modifier.height(16.dp)) // отступ до нижнего края
-        }
-    }
-}
-
-@Composable
-fun AboutItem(navController: NavHostController) {
-    SettingItem(
-        icon = Icons.Default.Info,
-        "О приложении"
-    ) {
-        navController.navigate("about")
-    }
-}
-
-@Composable
-fun ThemeSelector(viewModel: SettingsViewModel) {
-    val current by viewModel.themeMode.collectAsState()
-
-    Text(
-        "Тема приложения",
-        color = MaterialTheme.colorScheme.onSurface,
-        style = MaterialTheme.typography.titleMedium
-    )
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        RadioButton(selected = current == AppThemeMode.LIGHT, onClick = { viewModel.changeTheme(AppThemeMode.LIGHT) })
-        Text("Светлая",
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(end = 8.dp)
-        )
-
-        RadioButton(selected = current == AppThemeMode.DARK, onClick = { viewModel.changeTheme(AppThemeMode.DARK) })
-        Text("Тёмная",
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(end = 8.dp)
-        )
-
-        RadioButton(selected = current == AppThemeMode.SYSTEM, onClick = { viewModel.changeTheme(AppThemeMode.SYSTEM) })
-        Text("Система",
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(end = 8.dp)
-        )
-    }
-}
-
-@Composable
-fun RingtonePicker(context: Context, selectedAlarmUri: Uri?, onPicked: (Uri) -> Unit) {
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val uri = result.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
-        if (uri != null) onPicked(uri)
-    }
-
-    SettingItem(
-        icon = Icons.Default.Notifications,
-        "Мелодия будильника"
-    ) {
-        val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
-            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
-            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Выберите мелодию")
-            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
-            putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, selectedAlarmUri)
-        }
-        launcher.launch(intent)
-    }
-}
-
-@Composable
-fun HorizontalCompressionSensitivitySlider(viewModel: SettingsViewModel) {
-    val sensitivity by viewModel.horizontalCompressionSensitivity.collectAsState()
-
-    Column(modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 16.dp, vertical = 12.dp)) {
-
-        Text("Насколько машина должна сместиться вверх чтобы сработал будильник?",
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.titleMedium
-        )
-
-        Slider(
-            value = sensitivity.toFloat(),
-            onValueChange = { viewModel.changeHorizontalCompressionSensitivity(it.toInt()) },
-            valueRange = 0f..100f
-        )
-
-        val label = when {
-            sensitivity < 35 -> "Немного"
-            sensitivity < 70 -> "Средне"
-            else -> "Сильно"
-        }
-
-        Text("Текущее значение: $sensitivity ($label)",
-                color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
-@Composable
-fun VerticalMovementSensitivitySlider(viewModel: SettingsViewModel) {
-    val sensitivity by viewModel.verticalMovementSensitivity.collectAsState()
-
-    Column(modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 16.dp, vertical = 12.dp)) {
-
-        Text("Насколько должна уменьшиться машина чтобы сработал будильник?",
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.titleMedium
-        )
-
-        Slider(
-            value = sensitivity.toFloat(),
-            onValueChange = { viewModel.changeVerticalMovementSensitivity(it.toInt()) },
-            valueRange = 0f..100f
-        )
-
-        val label = when {
-            sensitivity < 35 -> "Немного"
-            sensitivity < 70 -> "Средне"
-            else -> "Сильно"
-        }
-
-        Text("Текущее значение: $sensitivity ($label)",
-            color = MaterialTheme.colorScheme.onSurface
-            )
-    }
-}
-
-@Composable
-fun StableTrajectorySensitivitySlider(viewModel: SettingsViewModel) {
-    val sensitivity by viewModel.stableTrajectorySensitivity.collectAsState()
-
-    Column(modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 16.dp, vertical = 12.dp)) {
-
-        Text("Насколько стабильным должно быть движение машины?",
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.titleMedium
-        )
-
-        Slider(
-            value = sensitivity.toFloat(),
-            onValueChange = { viewModel.changeStableTrajectoryRatio(it.toInt()) },
-            valueRange = 0f..100f
-        )
-
-        val label = when {
-            sensitivity < 35 -> "Низкая"
-            sensitivity < 70 -> "Средняя"
-            else -> "Высокая"
-        }
-
-        Text("Текущий уровень: $sensitivity ($label)",
-            color = MaterialTheme.colorScheme.onSurface,
-            )
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LanguageDropdown(viewModel: SettingsViewModel) {
-    val currentLang by viewModel.language.collectAsState()
-    val options = listOf(AppLanguage.RU, AppLanguage.KZ, AppLanguage.EN)
-    val labels = mapOf(
-        AppLanguage.RU to "Русский",
-        AppLanguage.KZ to "Қазақша",
-        AppLanguage.EN to "English"
-    )
+fun SettingsScreen(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = viewModel()
+) {
+    val isFirstLaunch by viewModel.isFirstLaunch.collectAsState()
 
-    var expanded by remember { mutableStateOf(false) }
-    val iconSizeDp = getIconSizeDp()
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "Настройки",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            )
+        }
+    ) { padding ->
+        SettingsContainer(viewModel, padding)
+    }
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    BackHandler { onBack() }
+
+    //TODO move to MainActivity
+    LaunchedEffect(isFirstLaunch) {
+        if (!isFirstLaunch) return@LaunchedEffect
+        viewModel.initDefaults()
+        viewModel.changeFirstLaunch(false)
+    }
+}
+
+@Composable
+fun SettingsContainer(
+    viewModel: SettingsViewModel,
+    padding: PaddingValues
+) {
+    val theme by viewModel.themeMode.collectAsState()
+    val language by viewModel.language.collectAsState()
+    val autoDayNightDetect by viewModel.autoDayNightDetect.collectAsState()
+    val is3DEnabled by viewModel.is3DEnabled.collectAsState()
+    val stableSensitivity by viewModel.stableTrajectorySensitivity.collectAsState()
+    val verticalSensitivity by viewModel.verticalMovementSensitivity.collectAsState()
+    val horizontalSensitivity by viewModel.horizontalCompressionSensitivity.collectAsState()
+    val selectedAlarmUri = viewModel.selectedAlarmUri
+    val allowStats by viewModel.allowStats.collectAsState()
+
+    Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(padding)
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        Icon(
-            imageVector = Icons.Default.Language,
-            contentDescription = null,
-            modifier = Modifier
-                .size(iconSizeDp)
-                .padding(end = 16.dp)
+        Text(
+            text = "Общие параметры",
+            style = MaterialTheme.typography.titleLarge
         )
 
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded },
-            modifier = Modifier.weight(1f)
-        ) {
-            TextField(
-                value = labels[currentLang] ?: "",
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Язык интерфейса", color = MaterialTheme.colorScheme.onSurface) },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth(),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
-                )
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            SettingRowDropdown(
+                icon = Icons.Default.DarkMode,
+                title = "Тема приложения",
+                value = theme.label,
+                options = AppThemeMode.entries.map { it.label },
+                onSelect = { label ->
+                    AppThemeMode.entries.firstOrNull { it.label == label }
+                        ?.let { viewModel.changeTheme(it) }
+                }
             )
 
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-                modifier = Modifier
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
-                options.forEach { lang ->
-                    DropdownMenuItem(
-                        text = { Text(labels[lang] ?: "", color = MaterialTheme.colorScheme.onSurface) },
-                        onClick = {
-                            viewModel.changeLanguage(lang)
-                            expanded = false
-                        }
+            SettingRowDropdown(
+                icon = Icons.Default.Language,
+                title = "Язык интерфейса",
+                value = language.label,
+                options = AppLanguage.entries.map { it.label },
+                onSelect = { label ->
+                    AppLanguage.entries.firstOrNull { it.label == label }
+                        ?.let { viewModel.changeLanguage(it) }
+                }
+            )
+
+            SettingRowSwitch(
+                icon = Icons.Default.BarChart,
+                title = "Анонимная статистика",
+                checked = allowStats,
+                onCheckedChange = { viewModel.changeAllowStats(it) }
+            )
+        }
+
+        Text(
+            text = "Параметры будильника",
+            style = MaterialTheme.typography.titleLarge
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            AlarmRingtoneSetting(
+                selectedAlarmUri = selectedAlarmUri,
+                onPicked = { viewModel.changeAlarmUri(it) }
+            )
+
+            SettingRowSlider(
+                icon = Icons.Default.Sensors,
+                title = "Чувствительность датчика",
+                value = stableSensitivity.toFloat(),
+                onValueChange = { viewModel.changeStableTrajectoryRatio(it.toInt()) },
+                valueDescriptionMapper = { sensitivityValueMapper(it) }
+            )
+
+            SettingRowSlider(
+                icon = Icons.Default.Sensors,
+                title = "Чувствительность смещения вверх",
+                value = verticalSensitivity.toFloat(),
+                onValueChange = { viewModel.changeVerticalMovementSensitivity(it.toInt()) },
+                valueDescriptionMapper = { sensitivityValueMapper(it) }
+            )
+
+            SettingRowSlider(
+                icon = Icons.Default.Sensors,
+                title = "Чувствительность уменьшения",
+                value = horizontalSensitivity.toFloat(),
+                onValueChange = { viewModel.changeHorizontalCompressionSensitivity(it.toInt()) },
+                valueDescriptionMapper = { sensitivityValueMapper(it) }
+            )
+
+            SettingRowSwitch(
+                icon = Icons.Default.Tonality,
+                title = "Авто день/ночь",
+                checked = autoDayNightDetect,
+                onCheckedChange = { viewModel.changeAutoDayNightDetect(it) }
+            )
+        }
+
+        Text(
+            text = "Параметры карты",
+            style = MaterialTheme.typography.titleLarge
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            SettingRowSwitch(
+                icon = Icons.Default._3dRotation,
+                title = "3D режим карты",
+                checked = is3DEnabled,
+                onCheckedChange = { viewModel.change3DEnabled(it) }
+            )
+        }
+    }
+
+}
+
+@Composable
+fun SettingRowDropdown(
+    icon: ImageVector,
+    title: String,
+    value: String,
+    options: List<String>,
+    onSelect: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val dropdownWidth = remember { mutableIntStateOf(0) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = true }
+            .onGloballyPositioned { coordinates ->
+                dropdownWidth.intValue = coordinates.size.width
+            }
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.padding(end = 16.dp)
+            )
+            Text(
+                text = title,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(text = value)
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = null
+            )
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier
+                .width(with(LocalDensity.current) {
+                    dropdownWidth.intValue.toDp() })
+                .background(
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(12.dp)
+                )
+        ) {
+            options.forEachIndexed { index, option ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = option,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    },
+                    onClick = {
+                        onSelect(option)
+                        expanded = false
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                )
+
+                if (index != options.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                     )
                 }
             }
@@ -340,42 +272,176 @@ fun LanguageDropdown(viewModel: SettingsViewModel) {
 }
 
 @Composable
-fun SettingItem(
+fun SettingRowSwitch(
     icon: ImageVector,
-    text: String,
-    onClick: () -> Unit,
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
 ) {
-    val iconSizeDp = getIconSizeDp()
-
-    Row(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable { onCheckedChange(!checked) }
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
+        Row(
             modifier = Modifier
-                .size(iconSizeDp)
-                .padding(end = 16.dp)
-        )
-        Text(
-            text = text,
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
-        )
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.padding(end = 16.dp)
+            )
+            Text(
+                text = title,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Switch(
+                checked = checked,
+                onCheckedChange = null
+            )
+        }
     }
 }
 
 @Composable
-private fun getIconSizeDp(): Dp {
-    val density = LocalDensity.current
-    val textStyle = MaterialTheme.typography.bodyLarge
-    val iconSizeDp = with(density) {
-        (textStyle.fontSize * iconToTextRatio).toDp()
+fun SettingRowSlider(
+    icon: ImageVector,
+    title: String,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..100f,
+    steps: Int = 0,
+    valueSuffix: String? = null,
+    valueDescriptionMapper: ((Float) -> String)
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.padding(end = 16.dp)
+                )
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Slider(
+                value = value,
+                onValueChange = onValueChange,
+                valueRange = valueRange,
+                steps = steps,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            val valueText = "${value.toInt()}${valueSuffix ?: "%"}"
+            val description = valueDescriptionMapper.invoke(value)
+
+            Text(
+                text = if (description != null) "$valueText  ($description)" else valueText,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.align(Alignment.End)
+            )
+        }
     }
-    return iconSizeDp
 }
+
+fun sensitivityValueMapper(value: Float): String {
+    return when {
+        value < 35 -> "Низкая"
+        value < 70 -> "Средняя"
+        else -> "Высокая"
+    }
+}
+
+@Composable
+fun AlarmRingtoneSetting(
+    selectedAlarmUri: Uri?,
+    onPicked: (Uri) -> Unit
+) {
+    val context = LocalContext.current
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val uri = result.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+        if (uri != null) onPicked(uri)
+    }
+
+    val ringtoneTitle = remember(selectedAlarmUri) {
+        RingtoneManager.getRingtone(context, selectedAlarmUri)?.getTitle(context) ?: "Не выбрано"
+    }
+
+    SettingRowNavigation(
+        icon = Icons.Default.Notifications,
+        title = "Звук будильника",
+        value = ringtoneTitle,
+        onClick = {
+            val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+                putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Выберите мелодию")
+                putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+                putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, selectedAlarmUri)
+            }
+            launcher.launch(intent)
+        }
+    )
+}
+
+@Composable
+fun SettingRowNavigation(
+    icon: ImageVector,
+    title: String,
+    value: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.padding(end = 16.dp)
+            )
+            Text(
+                text = title,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyLarge
+            )
+            if (value.isNotEmpty()) {
+                Text(
+                    text = value,
+                    modifier = Modifier
+                        .padding(start = 8.dp, end = 8.dp)
+                        .widthIn(max = 80.dp), // ограничение ширины
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null
+            )
+        }
+    }
+}
+

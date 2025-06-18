@@ -9,18 +9,13 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import androidx.core.net.toUri
+import androidx.datastore.preferences.core.booleanPreferencesKey
 
 val Context.dataStore by preferencesDataStore(name = "app_settings")
 
 class SettingsPreferenceManager(private val context: Context) {
 
-    private val THEME_KEY = stringPreferencesKey("theme")
-    private val RINGTONE_KEY = stringPreferencesKey("alarm_ringtone_uri")
-    private val VERTICAL_MOVEMENT_SENSITIVITY_KEY = intPreferencesKey("vertical_movement_sensitivity_int")
-    private val HORIZONTAL_COMPRESSION_SENSITIVITY_KEY = intPreferencesKey("horizontal_compression_sensitivity_int")
-    private val STABLE_TRAJECTORY_SENSITIVITY_KEY = intPreferencesKey("stable_trajectory_sensitivity_int")
-    private val LANGUAGE_KEY = stringPreferencesKey("app_language")
-
+    private val THEME_KEY = stringPreferencesKey("app_theme")
     fun getTheme(): Flow<AppThemeMode> = context.dataStore.data.map { prefs ->
         when (prefs[THEME_KEY]) {
             "LIGHT" -> AppThemeMode.LIGHT
@@ -28,54 +23,13 @@ class SettingsPreferenceManager(private val context: Context) {
             else -> AppThemeMode.SYSTEM
         }
     }
-
     suspend fun setTheme(mode: AppThemeMode) {
         context.dataStore.edit { prefs ->
             prefs[THEME_KEY] = mode.name
         }
     }
 
-    fun getAlarmUri(): Flow<Uri?> = context.dataStore.data.map { prefs ->
-        prefs[RINGTONE_KEY]?.toUri()
-    }
-
-    suspend fun setAlarmUri(uri: Uri?) {
-        context.dataStore.edit { prefs ->
-            if (uri != null) prefs[RINGTONE_KEY] = uri.toString()
-            else prefs.remove(RINGTONE_KEY)
-        }
-    }
-
-    fun getVerticalMovementSensitivity(): Flow<Int> = context.dataStore.data.map { prefs ->
-        prefs[VERTICAL_MOVEMENT_SENSITIVITY_KEY] ?: 50
-    }
-
-    suspend fun setVerticalMovementSensitivity(value: Int) {
-        context.dataStore.edit { prefs ->
-            prefs[VERTICAL_MOVEMENT_SENSITIVITY_KEY] = value
-        }
-    }
-
-    fun getHorizontalCompressionSensitivity(): Flow<Int> = context.dataStore.data.map { prefs ->
-        prefs[HORIZONTAL_COMPRESSION_SENSITIVITY_KEY] ?: 50
-    }
-
-    suspend fun setHorizontalCompressionSensitivity(value: Int) {
-        context.dataStore.edit { prefs ->
-            prefs[HORIZONTAL_COMPRESSION_SENSITIVITY_KEY] = value
-        }
-    }
-
-    fun getStableTrajectoryRatio(): Flow<Int> = context.dataStore.data.map { prefs ->
-        prefs[STABLE_TRAJECTORY_SENSITIVITY_KEY] ?: 50
-    }
-
-    suspend fun setStableTrajectoryRatio(value: Int) {
-        context.dataStore.edit { prefs ->
-            prefs[STABLE_TRAJECTORY_SENSITIVITY_KEY] = value
-        }
-    }
-
+    private val LANGUAGE_KEY = stringPreferencesKey("app_language")
     fun getLanguage(): Flow<AppLanguage> = context.dataStore.data.map { prefs ->
         when (prefs[LANGUAGE_KEY]) {
             "KZ" -> AppLanguage.KZ
@@ -83,13 +37,91 @@ class SettingsPreferenceManager(private val context: Context) {
             else -> AppLanguage.RU
         }
     }
-
     suspend fun setLanguage(lang: AppLanguage) {
         context.dataStore.edit { prefs ->
             prefs[LANGUAGE_KEY] = lang.name
         }
     }
 
+    private val AUTO_DAY_NIGHT_DETECT_KEY = booleanPreferencesKey("auto_day_night_detect")
+    fun getAutoDayNightDetect(): Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[AUTO_DAY_NIGHT_DETECT_KEY] ?: true
+    }
+    suspend fun setAutoDayNightDetect(value: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[AUTO_DAY_NIGHT_DETECT_KEY] = value
+        }
+    }
 
+    private val IS_3D_ENABLED_KEY = booleanPreferencesKey("is_3d_enabled")
+    fun is3DEnabled(): Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[IS_3D_ENABLED_KEY] ?: true
+    }
+    suspend fun set3DEnabled(value: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[IS_3D_ENABLED_KEY] = value
+        }
+    }
+
+    private val STABLE_TRAJECTORY_SENSITIVITY_KEY = intPreferencesKey("stable_trajectory_sensitivity_int")
+    fun getStableTrajectoryRatio(): Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[STABLE_TRAJECTORY_SENSITIVITY_KEY] ?: 50
+    }
+    suspend fun setStableTrajectoryRatio(value: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[STABLE_TRAJECTORY_SENSITIVITY_KEY] = value
+        }
+    }
+
+    private val VERTICAL_MOVEMENT_SENSITIVITY_KEY = intPreferencesKey("vertical_movement_sensitivity_int")
+    fun getVerticalMovementSensitivity(): Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[VERTICAL_MOVEMENT_SENSITIVITY_KEY] ?: 50
+    }
+    suspend fun setVerticalMovementSensitivity(value: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[VERTICAL_MOVEMENT_SENSITIVITY_KEY] = value
+        }
+    }
+
+    private val HORIZONTAL_COMPRESSION_SENSITIVITY_KEY = intPreferencesKey("horizontal_compression_sensitivity_int")
+    fun getHorizontalCompressionSensitivity(): Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[HORIZONTAL_COMPRESSION_SENSITIVITY_KEY] ?: 50
+    }
+    suspend fun setHorizontalCompressionSensitivity(value: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[HORIZONTAL_COMPRESSION_SENSITIVITY_KEY] = value
+        }
+    }
+
+    private val RINGTONE_KEY = stringPreferencesKey("alarm_ringtone_uri")
+    fun getAlarmUri(): Flow<Uri?> = context.dataStore.data.map { prefs ->
+        prefs[RINGTONE_KEY]?.toUri()
+    }
+    suspend fun setAlarmUri(uri: Uri?) {
+        context.dataStore.edit { prefs ->
+            if (uri != null) prefs[RINGTONE_KEY] = uri.toString()
+            else prefs.remove(RINGTONE_KEY)
+        }
+    }
+
+    private val ALLOW_STATS_KEY = booleanPreferencesKey("allow_stats")
+    fun getAllowStats(): Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[ALLOW_STATS_KEY] ?: true
+    }
+    suspend fun setAllowStats(value: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[ALLOW_STATS_KEY] = value
+        }
+    }
+
+    private val IS_FIRST_LAUNCH_KEY = booleanPreferencesKey("app_first_launch")
+    fun isFirstLaunch(): Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[IS_FIRST_LAUNCH_KEY] ?: true
+    }
+    suspend fun setFirstLaunch(value: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[IS_FIRST_LAUNCH_KEY] = value
+        }
+    }
 }
 

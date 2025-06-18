@@ -1,12 +1,8 @@
-package com.daristov.checkpoint.screens.about.items
+package com.daristov.checkpoint.screens.menu.items
 
-import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -19,14 +15,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -34,7 +22,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,20 +29,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
-import com.daristov.checkpoint.R
-import kotlinx.coroutines.delay
 
 @Composable
-fun InstructionScreen(navController: NavHostController) {
+fun InstructionScreen(onBack: () -> Unit) {
     val steps = listOf(
         InstructionStep("Шаг 1", "Откройте карту и найдите ближайший КПП", imageRes = 0),
         InstructionStep("Шаг 2", "Нажмите на значок, чтобы увидеть информацию", imageRes = 0),
@@ -68,9 +46,7 @@ fun InstructionScreen(navController: NavHostController) {
     var isPaused by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    BackHandler {
-        navController.navigate("about")
-    }
+    BackHandler { onBack() }
 
     LaunchedEffect(currentStepIndex) {
         progress.snapTo(0f)
@@ -86,7 +62,7 @@ fun InstructionScreen(navController: NavHostController) {
                 if (currentStepIndex < steps.lastIndex) {
                     currentStepIndex++
                 } else {
-                    navController.navigate("about")
+                    onBack()
                 }
             }
         }

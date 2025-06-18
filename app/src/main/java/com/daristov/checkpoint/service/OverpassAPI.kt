@@ -1,9 +1,9 @@
 package com.daristov.checkpoint.service
 
 import android.util.Log
-import com.daristov.checkpoint.screens.mapscreen.domain.CustomMapObject
-import com.daristov.checkpoint.screens.mapscreen.viewmodel.MapViewModel.TileKey
-import com.daristov.checkpoint.screens.mapscreen.viewmodel.CUSTOMS_TILE_SIZE_DEGREES
+import com.daristov.checkpoint.screens.mapscreen.MapViewModel.TileKey
+import com.daristov.checkpoint.screens.mapscreen.CUSTOMS_TILE_SIZE_DEGREES
+import com.daristov.checkpoint.screens.mapscreen.CustomMapObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject

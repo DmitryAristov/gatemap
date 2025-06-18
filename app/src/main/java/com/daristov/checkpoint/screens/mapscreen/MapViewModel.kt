@@ -1,11 +1,9 @@
-package com.daristov.checkpoint.screens.mapscreen.viewmodel
+package com.daristov.checkpoint.screens.mapscreen
 
 import android.location.Location
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.daristov.checkpoint.screens.mapscreen.MapInitStep
-import com.daristov.checkpoint.screens.mapscreen.domain.CustomMapObject
 import com.daristov.checkpoint.service.LocationRepository
 import com.daristov.checkpoint.service.OverpassAPI
 import kotlinx.coroutines.channels.Channel
@@ -189,4 +187,15 @@ class MapViewModel : ViewModel() {
             return 31 * x + y
         }
     }
+}
+
+data class CustomMapObject(
+    val id: String,
+    val name: String,
+    val queueSize: Int = 0,
+    val waitTimeMinutes: Int = 0,
+    val latitude: Double,
+    val longitude: Double
+) {
+    val location: LatLng get() = LatLng(latitude, longitude)
 }
