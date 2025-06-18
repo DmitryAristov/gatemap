@@ -1,0 +1,76 @@
+<resources>
+    <string name="app_name">Checkpoint</string>
+    <string name="maptiler_api_key">AL3U3T6PM9wdAGgBJTRF</string>
+
+    <string name="motion_sensor">Motion Sensor</string>
+    <string name="menu">Menu</string>
+    <string name="motion_detected">Motion Detected</string>
+    <string name="waiting">Waiting</string>
+    <string name="night">Night</string>
+    <string name="day">Day</string>
+    <string name="mode">Mode</string>
+
+
+    <string name="loading_map">Loading map…</string>
+    <string name="fetching_location">Fetching location…</string>
+    <string name="searching_checkpoints">Searching for nearby checkpoints…</string>
+    <string name="chat">Chat</string>
+    <string name="my_location">My Location</string>
+    <string name="queue_question">Approximately how many vehicles are in the queue now or how long is the wait time at the checkpoint</string>
+    <string name="cars_count">vehicles</string>
+    <string name="hours_count">hours</string>
+    <string name="queue">Queue</string>
+    <string name="wait_time">Wait</string>
+
+
+    <string name="view_chat">View Chat</string>
+    <string name="common_settings">General Settings</string>
+    <string name="app_theme">App Theme</string>
+    <string name="interface_language">Interface Language</string>
+    <string name="anonymous_stats">Anonymous Statistics</string>
+    <string name="alarm_settings">Alarm Settings</string>
+    <string name="reset">Reset</string>
+    <string name="motion_sensitivity">Motion Sensitivity</string>
+    <string name="vertical_sensitivity">Vertical Shift Sensitivity</string>
+    <string name="horizontal_sensitivity">Compression Sensitivity</string>
+    <string name="auto_day_night">Auto Day/Night</string>
+    <string name="map_settings">Map Settings</string>
+    <string name="map_3d_mode">3D Map Mode</string>
+
+
+    <string name="low">Low</string>
+    <string name="medium">Medium</string>
+    <string name="high">High</string>
+    <string name="alarm_not_selected">Not Selected</string>
+    <string name="alarm_sound">Alarm Sound</string>
+    <string name="choose_ringtone">Choose Ringtone</string>
+    <string name="permission_required">Camera and location access is required for the app to function.</string>
+    <string name="grant_permission">Grant Access</string>
+    <string name="empty" />
+
+
+    <string name="settings">Settings</string>
+    <string name="map_screen">Checkpoints Map</string>
+    <string name="feedback">Feedback</string>
+    <string name="suggestions">Suggestions</string>
+    <string name="instruction">Instruction</string>
+    <string name="author">Author</string>
+    <string name="version">Version</string>
+    <string name="build">Build</string>
+    <string name="license">License</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_system">System</string>
+
+
+    <string name="error">Error</string>
+    <string name="your_message">Your message</string>
+    <string name="idea">Idea</string>
+    <string name="other">Other</string>
+    <string name="email_optional">Email (optional)</string>
+    <string name="send_anonymous_logs">Send anonymous logs</string>
+    <string name="sent">Sent!</string>
+    <string name="send">Send</string>
+    <string name="developer_suggestions">Developer Suggestions</string>
+
+</resources>

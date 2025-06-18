@@ -9,6 +9,10 @@ import androidx.lifecycle.viewModelScope
 import com.daristov.checkpoint.screens.alarm.AlarmUiState
 import com.daristov.checkpoint.screens.alarm.detector.RearLightsDetector
 import com.daristov.checkpoint.screens.alarm.detector.RearLightsMotionDetector
+import com.daristov.checkpoint.screens.settings.DEFAULT_AUTO_DAY_NIGHT_DETECT
+import com.daristov.checkpoint.screens.settings.DEFAULT_HORIZONTAL_COMPRESSION_SENSITIVITY
+import com.daristov.checkpoint.screens.settings.DEFAULT_STABLE_TRAJECTORY_SENSITIVITY
+import com.daristov.checkpoint.screens.settings.DEFAULT_VERTICAL_MOVEMENT_SENSITIVITY
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import com.daristov.checkpoint.service.OrientationProvider
@@ -35,11 +39,22 @@ class AlarmViewModel(
 
     private var frameWidth: Int = 0
     private var frameHeight: Int = 0
-    private var horizontalCompressionSensitivity: Double = 0.0
-    private var verticalMovementSensitivity: Double = 0.0
-    private var stableTrajectoryRatio: Double = 0.0
+    private var isAutoDayNightDetectEnabled: Boolean = DEFAULT_AUTO_DAY_NIGHT_DETECT
+    private var stableTrajectoryRatio: Double = DEFAULT_STABLE_TRAJECTORY_SENSITIVITY * 0.01
+    private var verticalMovementSensitivity: Double = DEFAULT_VERTICAL_MOVEMENT_SENSITIVITY * 0.01
+    private var horizontalCompressionSensitivity: Double = DEFAULT_HORIZONTAL_COMPRESSION_SENSITIVITY * 0.01
 
     init {
+        viewModelScope.launch {
+            settingsManager.getAutoDayNightDetect().collect {
+                isAutoDayNightDetectEnabled = it
+            }
+        }
+        viewModelScope.launch {
+            settingsManager.getStableTrajectoryRatio().collect {
+                stableTrajectoryRatio = it.toFloat() * 0.01
+            }
+        }
         viewModelScope.launch {
             settingsManager.getVerticalMovementSensitivity().collect {
                 verticalMovementSensitivity = it.toFloat() * 0.01
@@ -48,11 +63,6 @@ class AlarmViewModel(
         viewModelScope.launch {
             settingsManager.getHorizontalCompressionSensitivity().collect {
                 horizontalCompressionSensitivity = it.toFloat() * 0.01
-            }
-        }
-        viewModelScope.launch {
-            settingsManager.getStableTrajectoryRatio().collect {
-                stableTrajectoryRatio = it.toFloat() * 0.01
             }
         }
     }
@@ -73,9 +83,12 @@ class AlarmViewModel(
         val hsv = Mat()
         Imgproc.cvtColor(mat, hsv, Imgproc.COLOR_BGR2HSV)
 
-        val night = lightsDetector.isNightImage(hsv)
+        val isNight = if (isAutoDayNightDetectEnabled) lightsDetector.isNightImage(hsv) else uiState.value.isNight
         _uiState.update {
-            it.copy(isNight = night, bitmapSize = Size(bitmap.width, bitmap.height))
+            it.copy(
+                isNight = isNight,
+                bitmapSize = Size(bitmap.width, bitmap.height)
+            )
         }
 
         analyzeFrame(bitmap)
@@ -85,7 +98,7 @@ class AlarmViewModel(
     fun analyzeFrame(bitmap: Bitmap) {
         viewModelScope.launch(Dispatchers.Default) {
             val rearLightPair = lightsDetector.process(bitmap)
-            if (rearLightPair != null) {
+            rearLightPair?.let {
                 val motionDetected = motionDetector.update(rearLightPair)
                 _uiState.update {
                     it.copy(
@@ -106,7 +119,20 @@ class AlarmViewModel(
     }
 
     override fun onOrientationChanged(pitch: Float, roll: Float, azimuth: Float) {
-        _uiState.update { it.copy(pitch = pitch, roll = roll) }
+        _uiState.update {
+            it.copy(
+                pitch = pitch,
+                roll = roll
+            )
+        }
+    }
+
+    fun setManualNightMode(isNight: Boolean) {
+        _uiState.update {
+            it.copy(
+                isNight = isNight
+            )
+        }
     }
 }
 

@@ -31,8 +31,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.daristov.checkpoint.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +46,7 @@ fun MenuScreen(navController: NavController) {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Меню",
+                        text = stringResource(R.string.menu),
                         style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -66,16 +68,16 @@ fun MenuScreen(navController: NavController) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    MenuItem("Настройки", Icons.Default.Settings) {
+                    MenuItem(stringResource(R.string.settings), Icons.Default.Settings) {
                         navController.navigate("menu/settings")
                     }
-                    MenuItem("Обратная связь", Icons.Default.Email) {
+                    MenuItem(stringResource(R.string.feedback), Icons.Default.Email) {
                         navController.navigate("menu/feedback")
                     }
-                    MenuItem("Предложения", Icons.Default.Lightbulb) {
+                    MenuItem(stringResource(R.string.suggestions), Icons.Default.Lightbulb) {
                         navController.navigate("menu/suggestions")
                     }
-                    MenuItem("Инструкция", Icons.Default.School) {
+                    MenuItem(stringResource(R.string.instruction), Icons.Default.School) {
                         navController.navigate("menu/instruction")
                     }
                 }
@@ -130,19 +132,19 @@ fun DeveloperInfo(padding: PaddingValues) {
     ) {
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Автор: $author",
+            text = "${stringResource(R.string.author)}: $author",
             style = MaterialTheme.typography.titleMedium
         )
         Text(
-            text = "Версия: $versionName",
+            text = "${stringResource(R.string.version)}: $versionName",
             style = MaterialTheme.typography.titleMedium
         )
         Text(
-            text = "Сборка: $buildDate",
+            text = "${stringResource(R.string.build)}: $buildDate",
             style = MaterialTheme.typography.titleMedium
         )
         Text(
-            text = "Лицензия: $license",
+            text = "${stringResource(R.string.license)}: $license",
             style = MaterialTheme.typography.titleMedium
         )
     }

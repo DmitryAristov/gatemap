@@ -31,7 +31,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.daristov.checkpoint.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +46,7 @@ fun FeedbackScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Обратная связь",
+                        text = stringResource(R.string.feedback),
                         style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -71,7 +73,7 @@ fun FeedbackContainer(
     var isLoading by remember { mutableStateOf(false) }
 
     val isFormValid = message.isNotBlank() && selectedTag != null
-    val showLogsCheckbox = selectedTag == "Ошибка"
+    val showLogsCheckbox = selectedTag == stringResource(R.string.error)
 
     Column(
         modifier = Modifier
@@ -83,14 +85,14 @@ fun FeedbackContainer(
         OutlinedTextField(
             value = message,
             onValueChange = { message = it },
-            label = { Text("Ваше сообщение") },
+            label = { Text(stringResource(R.string.your_message)) },
             modifier = Modifier.fillMaxWidth(),
             minLines = 4,
             maxLines = 6
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Ошибка", "Идея", "Другое").forEach { tag ->
+            listOf(stringResource(R.string.error), stringResource(R.string.idea), stringResource(R.string.other)).forEach { tag ->
                 FilterChip(
                     selected = selectedTag == tag,
                     onClick = { selectedTag = tag },
@@ -102,7 +104,7 @@ fun FeedbackContainer(
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("Email (необязательно)") },
+            label = { Text(stringResource(R.string.email_optional)) },
             modifier = Modifier.fillMaxWidth(),
             isError = email.isNotBlank() && !Patterns.EMAIL_ADDRESS.matcher(email).matches()
         )
@@ -111,10 +113,11 @@ fun FeedbackContainer(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = sendLogs, onCheckedChange = { sendLogs = it })
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Отправить анонимные логи")
+                Text(stringResource(R.string.send_anonymous_logs))
             }
         }
 
+        val sent = stringResource(R.string.sent)
         Button(
             onClick = {
                 isLoading = true
@@ -124,7 +127,7 @@ fun FeedbackContainer(
                 email = ""
                 sendLogs = true
                 isLoading = false
-                Toast.makeText(context, "Отправлено!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "${sent}!", Toast.LENGTH_SHORT).show()
             },
             enabled = isFormValid && !isLoading,
             modifier = Modifier.align(Alignment.End)
@@ -135,7 +138,7 @@ fun FeedbackContainer(
                     strokeWidth = 2.dp
                 )
             } else {
-                Text("Отправить")
+                Text(stringResource(R.string.send))
             }
         }
     }

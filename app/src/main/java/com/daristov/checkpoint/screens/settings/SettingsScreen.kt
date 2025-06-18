@@ -32,9 +32,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.unit.dp
+import com.daristov.checkpoint.R
+import com.daristov.checkpoint.updateLocale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,7 +52,7 @@ fun SettingsScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Настройки",
+                        text = stringResource(R.string.settings),
                         style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -75,6 +78,7 @@ fun SettingsContainer(
     viewModel: SettingsViewModel,
     padding: PaddingValues
 ) {
+    val context = LocalContext.current
     val theme by viewModel.themeMode.collectAsState()
     val language by viewModel.language.collectAsState()
     val autoDayNightDetect by viewModel.autoDayNightDetect.collectAsState()
@@ -94,45 +98,60 @@ fun SettingsContainer(
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         Text(
-            text = "Общие параметры",
+            text = stringResource(R.string.common_settings),
             style = MaterialTheme.typography.titleLarge
         )
 
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+
+            val themeLabels = AppThemeMode.entries.associateWith { stringResource(it.labelRes()) }
             SettingRowDropdown(
                 icon = Icons.Default.DarkMode,
-                title = "Тема приложения",
-                value = theme.label,
-                options = AppThemeMode.entries.map { it.label },
+                title = stringResource(R.string.app_theme),
+                value = stringResource(theme.labelRes()),
+                options = AppThemeMode.entries.map { stringResource(it.labelRes()) },
                 onSelect = { label ->
-                    AppThemeMode.entries.firstOrNull { it.label == label }
-                        ?.let { viewModel.changeTheme(it) }
+                    themeLabels.entries.firstOrNull { it.value == label }?.key?.let {
+                        viewModel.changeTheme(it)
+                    }
                 }
             )
 
             SettingRowDropdown(
                 icon = Icons.Default.Language,
-                title = "Язык интерфейса",
+                title = stringResource(R.string.interface_language),
                 value = language.label,
                 options = AppLanguage.entries.map { it.label },
                 onSelect = { label ->
                     AppLanguage.entries.firstOrNull { it.label == label }
-                        ?.let { viewModel.changeLanguage(it) }
+                        ?.let {
+                            viewModel.changeLanguage(it)
+                            context.updateLocale(language)
+                        }
                 }
             )
 
             SettingRowSwitch(
                 icon = Icons.Default.BarChart,
-                title = "Анонимная статистика",
+                title = stringResource(R.string.anonymous_stats),
                 checked = allowStats,
                 onCheckedChange = { viewModel.changeAllowStats(it) }
             )
         }
 
-        Text(
-            text = "Параметры будильника",
-            style = MaterialTheme.typography.titleLarge
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.alarm_settings),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = { viewModel.resetAlarmSettingsToDefault() }) {
+                Text(stringResource(R.string.reset))
+            }
+        }
 
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             AlarmRingtoneSetting(
@@ -142,45 +161,51 @@ fun SettingsContainer(
 
             SettingRowSlider(
                 icon = Icons.Default.Sensors,
-                title = "Чувствительность датчика",
+                title = stringResource(R.string.motion_sensitivity),
                 value = stableSensitivity.toFloat(),
-                onValueChange = { viewModel.changeStableTrajectoryRatio(it.toInt()) },
-                valueDescriptionMapper = { sensitivityValueMapper(it) }
+                onValueChange = { viewModel.changeStableTrajectoryRatio(it.toInt()) }
             )
 
             SettingRowSlider(
                 icon = Icons.Default.Sensors,
-                title = "Чувствительность смещения вверх",
+                title = stringResource(R.string.vertical_sensitivity),
                 value = verticalSensitivity.toFloat(),
-                onValueChange = { viewModel.changeVerticalMovementSensitivity(it.toInt()) },
-                valueDescriptionMapper = { sensitivityValueMapper(it) }
+                onValueChange = { viewModel.changeVerticalMovementSensitivity(it.toInt()) }
             )
 
             SettingRowSlider(
                 icon = Icons.Default.Sensors,
-                title = "Чувствительность уменьшения",
+                title = stringResource(R.string.horizontal_sensitivity),
                 value = horizontalSensitivity.toFloat(),
-                onValueChange = { viewModel.changeHorizontalCompressionSensitivity(it.toInt()) },
-                valueDescriptionMapper = { sensitivityValueMapper(it) }
+                onValueChange = { viewModel.changeHorizontalCompressionSensitivity(it.toInt()) }
             )
 
             SettingRowSwitch(
                 icon = Icons.Default.Tonality,
-                title = "Авто день/ночь",
+                title = stringResource(R.string.auto_day_night),
                 checked = autoDayNightDetect,
                 onCheckedChange = { viewModel.changeAutoDayNightDetect(it) }
             )
         }
 
-        Text(
-            text = "Параметры карты",
-            style = MaterialTheme.typography.titleLarge
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.map_settings),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = { viewModel.resetMapSettingsToDefault() }) {
+                Text(stringResource(R.string.reset))
+            }
+        }
 
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             SettingRowSwitch(
                 icon = Icons.Default._3dRotation,
-                title = "3D режим карты",
+                title = stringResource(R.string.map_3d_mode),
                 checked = is3DEnabled,
                 onCheckedChange = { viewModel.change3DEnabled(it) }
             )
@@ -316,7 +341,6 @@ fun SettingRowSlider(
     valueRange: ClosedFloatingPointRange<Float> = 0f..100f,
     steps: Int = 0,
     valueSuffix: String? = null,
-    valueDescriptionMapper: ((Float) -> String)
 ) {
     Card(
         modifier = Modifier.fillMaxWidth()
@@ -345,22 +369,18 @@ fun SettingRowSlider(
             )
 
             val valueText = "${value.toInt()}${valueSuffix ?: "%"}"
-            val description = valueDescriptionMapper.invoke(value)
+            val description = when {
+                value < 35 -> stringResource(R.string.low)
+                value < 70 -> stringResource(R.string.medium)
+                else -> stringResource(R.string.high)
+            }
 
             Text(
-                text = if (description != null) "$valueText  ($description)" else valueText,
+                text = "$valueText  ($description)",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.align(Alignment.End)
             )
         }
-    }
-}
-
-fun sensitivityValueMapper(value: Float): String {
-    return when {
-        value < 35 -> "Низкая"
-        value < 70 -> "Средняя"
-        else -> "Высокая"
     }
 }
 
@@ -378,18 +398,20 @@ fun AlarmRingtoneSetting(
         if (uri != null) onPicked(uri)
     }
 
+    val notSelected = stringResource(R.string.alarm_not_selected)
     val ringtoneTitle = remember(selectedAlarmUri) {
-        RingtoneManager.getRingtone(context, selectedAlarmUri)?.getTitle(context) ?: "Не выбрано"
+        RingtoneManager.getRingtone(context, selectedAlarmUri)?.getTitle(context) ?: notSelected
     }
 
+    val chooseRingtone = stringResource(R.string.choose_ringtone)
     SettingRowNavigation(
         icon = Icons.Default.Notifications,
-        title = "Звук будильника",
+        title = stringResource(R.string.alarm_sound),
         value = ringtoneTitle,
         onClick = {
             val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
                 putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
-                putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Выберите мелодию")
+                putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, chooseRingtone)
                 putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
                 putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, selectedAlarmUri)
             }
@@ -431,7 +453,7 @@ fun SettingRowNavigation(
                     text = value,
                     modifier = Modifier
                         .padding(start = 8.dp, end = 8.dp)
-                        .widthIn(max = 80.dp), // ограничение ширины
+                        .widthIn(max = 80.dp),
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis

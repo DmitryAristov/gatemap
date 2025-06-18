@@ -96,6 +96,14 @@ object MapScreenUtils {
         }
     }
 
+    fun MapLibreMap.set3DMode(is3DEnabled: Boolean) {
+        if (!is3DEnabled) {
+            uiSettings.apply { isTiltGesturesEnabled = false }
+            setMinPitchPreference(0.0)
+            setMaxPitchPreference(0.0)
+        }
+    }
+
     fun MapLibreMap.showVisibleCustoms(viewModel: MapViewModel) {
         val customs = viewModel.customs.value
         val visibleMarkerIds = viewModel.visibleMarkerIds.value
@@ -208,7 +216,7 @@ object MapScreenUtils {
 
     fun MapView.zoomToCustoms(
         userLatLng: LatLng,
-        nearest: List<LatLng>,
+        nearest: List<LatLng>
     ) {
         if (nearest.isEmpty()) return
 

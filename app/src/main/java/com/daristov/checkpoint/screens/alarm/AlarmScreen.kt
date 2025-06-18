@@ -16,6 +16,7 @@ import androidx.camera.view.PreviewView.ScaleType.FIT_CENTER
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,6 +45,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -52,14 +55,17 @@ import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.daristov.checkpoint.R
 import com.daristov.checkpoint.screens.alarm.detector.RearLightsDetector
 import com.daristov.checkpoint.screens.alarm.viewmodel.AlarmViewModel
 import com.daristov.checkpoint.screens.alarm.viewmodel.AlarmViewModelFactory
 import com.daristov.checkpoint.screens.settings.SettingsPreferenceManager
+import com.daristov.checkpoint.screens.settings.SettingsViewModel
 import java.util.concurrent.Executors
 
 @kotlin.OptIn(ExperimentalMaterial3Api::class)
@@ -79,7 +85,7 @@ fun AlarmScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Датчик движения",
+                        text = stringResource(R.string.motion_sensor),
                         style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -88,7 +94,7 @@ fun AlarmScreen(
                     IconButton(
                         onClick = onOpenMenu
                     ) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Меню")
+                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.menu))
                     }
                 }
             )
@@ -103,9 +109,11 @@ fun AlarmScreen(
 @Composable
 fun AlarmContainer(
     viewModel: AlarmViewModel,
-    padding: PaddingValues
+    padding: PaddingValues,
+    settingsViewModel: SettingsViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    val isAutoDayNightDetectEnabled = settingsViewModel.autoDayNightDetect.collectAsState()
 
     Column(
         modifier = Modifier
@@ -150,13 +158,30 @@ fun AlarmContainer(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (state.motionDetected) "🚨 Обнаружено движение!" else "🟢 Ожидает",
+                    text = if (state.motionDetected)
+                        "🚨 ${stringResource(R.string.motion_detected)}!"
+                    else
+                        "🟢 ${stringResource(R.string.waiting)}",
                     style = MaterialTheme.typography.titleMedium
                 )
-                Text(
-                    text = if (state.isNight == true) "🌙 Ночь" else "☀️ День",
-                    style = MaterialTheme.typography.bodyLarge.copy(color = Color.White)
-                )
+
+                if (isAutoDayNightDetectEnabled.value) {
+                    Text(
+                        text = if (state.isNight == true) "🌙 ${stringResource(R.string.night)}" else "☀️ ${stringResource(R.string.day)}",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("${stringResource(R.string.mode)}:", style = MaterialTheme.typography.bodyMedium)
+                        SegmentedDayNightSwitch(
+                            isNight = state.isNight ?: false,
+                            onChange = { viewModel.setManualNightMode(it) }
+                        )
+                    }
+                }
             }
         }
     }
@@ -374,5 +399,38 @@ fun DrawRearLightsOverlay(
                 style = Stroke(width = strokeWidth)
             )
         }
+    }
+}
+
+@Composable
+fun SegmentedDayNightSwitch(
+    isNight: Boolean,
+    onChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        val selectedColor = MaterialTheme.colorScheme.primary
+        val unselectedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+
+        Text(
+            text = "☀️ ${stringResource(R.string.day)}",
+            modifier = Modifier
+                .clickable { onChange(false) }
+                .background(if (!isNight) selectedColor else Color.Transparent)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            color = if (!isNight) Color.White else unselectedColor
+        )
+
+        Text(
+            text = "🌙 ${stringResource(R.string.night)}",
+            modifier = Modifier
+                .clickable { onChange(true) }
+                .background(if (isNight) selectedColor else Color.Transparent)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            color = if (isNight) Color.White else unselectedColor
+        )
     }
 }

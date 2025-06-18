@@ -1,4 +1,76 @@
 <resources>
     <string name="app_name">Checkpoint</string>
     <string name="maptiler_api_key">AL3U3T6PM9wdAGgBJTRF</string>
+
+    <string name="motion_sensor">Датчик движения</string>
+    <string name="menu">Меню</string>
+    <string name="motion_detected">Обнаружено движение</string>
+    <string name="waiting">Ожидает</string>
+    <string name="night">Ночь</string>
+    <string name="day">День</string>
+    <string name="mode">Режим</string>
+
+
+    <string name="loading_map">Загружаем карту…</string>
+    <string name="fetching_location">Получаем местоположение…</string>
+    <string name="searching_checkpoints">Ищем ближайшие КПП…</string>
+    <string name="chat">Чат</string>
+    <string name="my_location">Мое местоположение</string>
+    <string name="queue_question">Сколько примерно сейчас в очереди машин или какое примерно время ожидания на КПП</string>
+    <string name="cars_count">машин</string>
+    <string name="hours_count">часов</string>
+    <string name="queue">Очередь</string>
+    <string name="wait_time">Ожидание</string>
+    <string name="view_chat">Посмотреть чат</string>
+
+
+    <string name="common_settings">Общие параметры</string>
+    <string name="app_theme">Тема приложения</string>
+    <string name="interface_language">Язык интерфейса</string>
+    <string name="anonymous_stats">Анонимная статистика</string>
+    <string name="alarm_settings">Параметры будильника</string>
+    <string name="reset">Сбросить</string>
+    <string name="motion_sensitivity">Чувствительность датчика</string>
+    <string name="vertical_sensitivity">Чувствительность смещения вверх</string>
+    <string name="horizontal_sensitivity">Чувствительность уменьшения</string>
+    <string name="auto_day_night">Авто день/ночь</string>
+    <string name="map_settings">Параметры карты</string>
+    <string name="map_3d_mode">3D режим карты</string>
+
+
+    <string name="low">Низкая</string>
+    <string name="medium">Средняя</string>
+    <string name="high">Высокая</string>
+    <string name="alarm_not_selected">Не выбрано</string>
+    <string name="alarm_sound">Звук будильника</string>
+    <string name="choose_ringtone">Выберите мелодию</string>
+    <string name="permission_required">Для работы приложения требуется доступ к камере и местоположению.</string>
+    <string name="grant_permission">Предоставить доступ</string>
+    <string name="empty" />
+
+
+    <string name="settings">Настройки</string>
+    <string name="map_screen">Карта КПП</string>
+    <string name="feedback">Обратная связь</string>
+    <string name="suggestions">Предложения</string>
+    <string name="instruction">Инструкция</string>
+    <string name="author">Автор</string>
+    <string name="version">Версия</string>
+    <string name="build">Сборка</string>
+    <string name="license">Лицензия</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_dark">Темная</string>
+    <string name="theme_system">Системная</string>
+
+
+    <string name="error">Ошибка</string>
+    <string name="your_message">Ваше сообщение</string>
+    <string name="idea">Идея</string>
+    <string name="other">Другое</string>
+    <string name="email_optional">Email (необязательно)</string>
+    <string name="send_anonymous_logs">Отправить анонимные логи</string>
+    <string name="sent">Отправлено!</string>
+    <string name="send">Отправить</string>
+    <string name="developer_suggestions">Предложения разработчика</string>
+
 </resources>

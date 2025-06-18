@@ -12,6 +12,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.daristov.checkpoint.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,7 +27,7 @@ fun ChatScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Чат",
+                        text = stringResource(R.string.chat),
                         style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -36,7 +38,7 @@ fun ChatScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Меню"
+                            contentDescription = stringResource(R.string.menu)
                         )
                     }
                 }

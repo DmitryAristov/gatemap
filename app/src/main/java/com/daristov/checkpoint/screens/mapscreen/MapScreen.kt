@@ -1,6 +1,7 @@
 package com.daristov.checkpoint.screens.mapscreen
 
 import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
@@ -42,6 +44,7 @@ import com.daristov.checkpoint.util.MapScreenUtils.getMapLibreMapStyleURL
 import com.daristov.checkpoint.util.MapScreenUtils.handleInitialZoomDone
 import com.daristov.checkpoint.util.MapScreenUtils.initCustomsLayer
 import com.daristov.checkpoint.util.MapScreenUtils.loadLocationComponent
+import com.daristov.checkpoint.util.MapScreenUtils.set3DMode
 import com.daristov.checkpoint.util.MapScreenUtils.setupInteractionListeners
 import com.daristov.checkpoint.util.MapScreenUtils.setupTrackingButton
 import com.daristov.checkpoint.util.MapScreenUtils.showVisibleCustoms
@@ -59,11 +62,19 @@ const val DEFAULT_TILT = 50.0
 const val DEFAULT_ZOOM = 17.0
 const val FIRST_CUSTOMS_LOAD_BOUNDINGBOX_SIZE = 100.0
 
-enum class MapInitStep(val message: String) {
-    LOADING_MAP("Загружаем карту...        "),
-    LOADING_LOCATION("Получаем местоположение..."),
-    LOADING_CUSTOMS("Ищем ближайшие КПП...     "),
-    DONE("")
+enum class MapInitStep() {
+    LOADING_MAP,
+    LOADING_LOCATION,
+    LOADING_CUSTOMS,
+    DONE;
+
+    @StringRes
+    fun labelRes(): Int = when (this) {
+        LOADING_MAP -> R.string.loading_map
+        LOADING_LOCATION -> R.string.fetching_location
+        LOADING_CUSTOMS -> R.string.searching_checkpoints
+        DONE -> R.string.empty
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,19 +89,20 @@ fun MapScreen(onBack: () -> Unit,
     MapLibre.getInstance(context)
 
     val theme by settingsViewModel.themeMode.collectAsState()
+    val is3DEnabled by settingsViewModel.is3DEnabled.collectAsState()
     val location by LocationRepository.locationFlow.collectAsState()
     val customs by viewModel.customs.collectAsState()
     val currentStep by viewModel.currentStep.collectAsState()
     val isInitialZoomDone by viewModel.isInitialZoomDone.collectAsState()
 
-    val mapView = rememberConfiguredMapView(viewModel, theme)
+    val mapView = rememberConfiguredMapView(viewModel, theme, is3DEnabled)
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Карта КПП",
+                        text = stringResource(R.string.map_screen),
                         style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -99,7 +111,9 @@ fun MapScreen(onBack: () -> Unit,
                     IconButton(
                         onClick = onOpenMenu
                     ) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Меню")
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = stringResource(R.string.menu))
                     }
                 }
             )
@@ -173,7 +187,7 @@ fun MapContainer(mapView: MapView,
         )
 
         if (!isInitialZoomDone)
-            MapLoadingIndicator(message = currentStep.message)
+            MapLoadingIndicator(message = stringResource(currentStep.labelRes()))
 
         Row(
             modifier = Modifier
@@ -218,7 +232,7 @@ fun MapContainer(mapView: MapView,
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Chat,
                             tint = MaterialTheme.colorScheme.onSurface,
-                            contentDescription = "Чат",
+                            contentDescription = stringResource(R.string.chat),
                         )
                     }
                 }
@@ -234,7 +248,7 @@ fun MapContainer(mapView: MapView,
                     Icon(
                         imageVector = Icons.Default.MyLocation,
                         tint = MaterialTheme.colorScheme.onSurface,
-                        contentDescription = "Мое местоположение",
+                        contentDescription = stringResource(R.string.my_location),
                     )
                 }
 
@@ -244,7 +258,7 @@ fun MapContainer(mapView: MapView,
                     Icon(
                         imageVector = Icons.Default.Notifications,
                         tint = MaterialTheme.colorScheme.onSurface,
-                        contentDescription = "Будильник"
+                        contentDescription = stringResource(R.string.motion_sensor)
                     )
                 }
             }
@@ -265,7 +279,8 @@ fun MapContainer(mapView: MapView,
 @Composable
 fun rememberConfiguredMapView(
     viewModel: MapViewModel,
-    theme: AppThemeMode
+    theme: AppThemeMode,
+    is3DEnabled: Boolean
 ): MapView {
     val context = LocalContext.current
     val isSystemInDarkTheme = isSystemInDarkTheme()
@@ -288,6 +303,8 @@ fun rememberConfiguredMapView(
                 map.cameraPosition = CameraPosition.Builder()
                     .zoom(DEFAULT_ZOOM)
                     .build()
+
+                map.set3DMode(is3DEnabled)
                 map.setupInteractionListeners(viewModel)
             }
         }
@@ -295,7 +312,6 @@ fun rememberConfiguredMapView(
 
     return mapView
 }
-
 
 @Composable
 fun SurveyPanel(
@@ -325,7 +341,7 @@ fun SurveyPanel(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                text = "Сколько примерно сейчас в очереди машин или какое примерно время ожидания на КПП ${inCustomArea.name}?",
+                text = " ${stringResource(R.string.queue_question)} ${inCustomArea.name}?",
                 style = MaterialTheme.typography.titleMedium
             )
 
@@ -354,7 +370,7 @@ fun SurveyPanel(
                     border = ButtonDefaults.outlinedButtonBorder
                 ) {
                     Text(
-                        text = "${sliderValue.toInt()} машин",
+                        text = "${sliderValue.toInt()} ${stringResource(R.string.cars_count)}",
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
@@ -369,7 +385,7 @@ fun SurveyPanel(
                     border = ButtonDefaults.outlinedButtonBorder
                 ) {
                     Text(
-                        text = "${sliderValue.toInt() / 10} часов",
+                        text = "${sliderValue.toInt() / 10}  ${stringResource(R.string.hours_count)}",
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
@@ -399,7 +415,7 @@ fun MapLoadingIndicator(message: String, modifier: Modifier = Modifier) {
         ) {
             Box(modifier = Modifier
                 .padding(end = 12.dp)
-                .offset(y = 1.dp) // можно подкорректировать вручную
+                .offset(y = 1.dp)
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
@@ -438,11 +454,11 @@ fun CustomInfoCard(
 
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Очередь: ${custom.queueSize} машин",
+                text = "${stringResource(R.string.queue)}: ${custom.queueSize} ${stringResource(R.string.cars_count)}",
                 style = MaterialTheme.typography.bodyLarge
             )
             Text(
-                text = "Ожидание: ${custom.waitTimeMinutes} мин.",
+                text = "${stringResource(R.string.wait_time)}: ${custom.waitTimeHours} ${stringResource(R.string.hours_count)}",
                 style = MaterialTheme.typography.bodyLarge
             )
 
@@ -461,7 +477,7 @@ fun CustomInfoCard(
                 border = ButtonDefaults.outlinedButtonBorder
             ) {
                 Text(
-                    text = "Посмотреть чат",
+                    text = stringResource(R.string.view_chat),
                     style = MaterialTheme.typography.bodyLarge
                 )
             }

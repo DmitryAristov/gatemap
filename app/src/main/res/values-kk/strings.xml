@@ -1,0 +1,76 @@
+<resources>
+    <string name="app_name">Checkpoint</string>
+    <string name="maptiler_api_key">AL3U3T6PM9wdAGgBJTRF</string>
+
+    <string name="motion_sensor">Қозғалыс сенсоры</string>
+    <string name="menu">Мәзір</string>
+    <string name="motion_detected">Қозғалыс анықталды</string>
+    <string name="waiting">Күту</string>
+    <string name="night">Түн</string>
+    <string name="day">Күн</string>
+    <string name="mode">Режим</string>
+
+
+    <string name="loading_map">Картаны жүктеп жатырмыз…</string>
+    <string name="fetching_location">Орналасуды анықтап жатырмыз…</string>
+    <string name="searching_checkpoints">Жақын шекараларды іздеу…</string>
+    <string name="chat">Чат</string>
+    <string name="my_location">Менің орналасуым</string>
+    <string name="queue_question">Қазір кезекте шамамен қанша көлік немесе күту уақыты қанша</string>
+    <string name="cars_count">көлік</string>
+    <string name="hours_count">сағат</string>
+    <string name="queue">Кезек</string>
+    <string name="wait_time">Күту</string>
+    <string name="view_chat">Чатты қарау</string>
+
+
+    <string name="common_settings">Жалпы параметрлер</string>
+    <string name="app_theme">Қосымша тақырыбы</string>
+    <string name="interface_language">Тіл</string>
+    <string name="anonymous_stats">Анонимдік статистика</string>
+    <string name="alarm_settings">Оятқыш параметрлері</string>
+    <string name="reset">Қалпына келтіру</string>
+    <string name="motion_sensitivity">Сенсор сезімталдығы</string>
+    <string name="vertical_sensitivity">Жоғары қозғалыс сезімталдығы</string>
+    <string name="horizontal_sensitivity">Қысқару сезімталдығы</string>
+    <string name="auto_day_night">Авто күн/түн</string>
+    <string name="map_settings">Карта параметрлері</string>
+    <string name="map_3d_mode">3D карта режимі</string>
+
+
+    <string name="low">Төмен</string>
+    <string name="medium">Орташа</string>
+    <string name="high">Жоғары</string>
+    <string name="alarm_not_selected">Таңдалмаған</string>
+    <string name="alarm_sound">Оятқыш дыбысы</string>
+    <string name="choose_ringtone">Әуенді таңдаңыз</string>
+    <string name="permission_required">Қосымшаға камера мен орналасуға рұқсат қажет.</string>
+    <string name="grant_permission">Рұқсат беру</string>
+    <string name="empty" />
+
+
+    <string name="settings">Баптаулар</string>
+    <string name="map_screen">Кеден картасы</string>
+    <string name="feedback">Кері байланыс</string>
+    <string name="suggestions">Ұсыныстар</string>
+    <string name="instruction">Нұсқаулық</string>
+    <string name="author">Автор</string>
+    <string name="version">Нұсқа</string>
+    <string name="build">Жинақ</string>
+    <string name="license">Лицензия</string>
+    <string name="theme_light">Жарық</string>
+    <string name="theme_dark">Қараңғы</string>
+    <string name="theme_system">Жүйелік</string>
+
+
+    <string name="error">Қате</string>
+    <string name="your_message">Сіздің хабарламаңыз</string>
+    <string name="idea">Идея</string>
+    <string name="other">Басқа</string>
+    <string name="email_optional">Email (міндетті емес)</string>
+    <string name="send_anonymous_logs">Анонимді журналдарды жіберу</string>
+    <string name="sent">Жіберілді!</string>
+    <string name="send">Жіберу</string>
+    <string name="developer_suggestions">Әзірлеушінің ұсыныстары</string>
+
+</resources>

@@ -20,7 +20,7 @@ class SettingsPreferenceManager(private val context: Context) {
         when (prefs[THEME_KEY]) {
             "LIGHT" -> AppThemeMode.LIGHT
             "DARK" -> AppThemeMode.DARK
-            else -> AppThemeMode.SYSTEM
+            else -> DEFAULT_THEME
         }
     }
     suspend fun setTheme(mode: AppThemeMode) {
@@ -34,7 +34,7 @@ class SettingsPreferenceManager(private val context: Context) {
         when (prefs[LANGUAGE_KEY]) {
             "KZ" -> AppLanguage.KZ
             "EN" -> AppLanguage.EN
-            else -> AppLanguage.RU
+            else -> DEFAULT_LANGUAGE
         }
     }
     suspend fun setLanguage(lang: AppLanguage) {
@@ -45,7 +45,7 @@ class SettingsPreferenceManager(private val context: Context) {
 
     private val AUTO_DAY_NIGHT_DETECT_KEY = booleanPreferencesKey("auto_day_night_detect")
     fun getAutoDayNightDetect(): Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[AUTO_DAY_NIGHT_DETECT_KEY] ?: true
+        prefs[AUTO_DAY_NIGHT_DETECT_KEY] ?: DEFAULT_AUTO_DAY_NIGHT_DETECT
     }
     suspend fun setAutoDayNightDetect(value: Boolean) {
         context.dataStore.edit { prefs ->
@@ -55,7 +55,7 @@ class SettingsPreferenceManager(private val context: Context) {
 
     private val IS_3D_ENABLED_KEY = booleanPreferencesKey("is_3d_enabled")
     fun is3DEnabled(): Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[IS_3D_ENABLED_KEY] ?: true
+        prefs[IS_3D_ENABLED_KEY] ?: DEFAULT_3D_ENABLED
     }
     suspend fun set3DEnabled(value: Boolean) {
         context.dataStore.edit { prefs ->
@@ -65,7 +65,7 @@ class SettingsPreferenceManager(private val context: Context) {
 
     private val STABLE_TRAJECTORY_SENSITIVITY_KEY = intPreferencesKey("stable_trajectory_sensitivity_int")
     fun getStableTrajectoryRatio(): Flow<Int> = context.dataStore.data.map { prefs ->
-        prefs[STABLE_TRAJECTORY_SENSITIVITY_KEY] ?: 50
+        prefs[STABLE_TRAJECTORY_SENSITIVITY_KEY] ?: DEFAULT_STABLE_TRAJECTORY_SENSITIVITY
     }
     suspend fun setStableTrajectoryRatio(value: Int) {
         context.dataStore.edit { prefs ->
@@ -75,7 +75,7 @@ class SettingsPreferenceManager(private val context: Context) {
 
     private val VERTICAL_MOVEMENT_SENSITIVITY_KEY = intPreferencesKey("vertical_movement_sensitivity_int")
     fun getVerticalMovementSensitivity(): Flow<Int> = context.dataStore.data.map { prefs ->
-        prefs[VERTICAL_MOVEMENT_SENSITIVITY_KEY] ?: 50
+        prefs[VERTICAL_MOVEMENT_SENSITIVITY_KEY] ?: DEFAULT_VERTICAL_MOVEMENT_SENSITIVITY
     }
     suspend fun setVerticalMovementSensitivity(value: Int) {
         context.dataStore.edit { prefs ->
@@ -85,7 +85,7 @@ class SettingsPreferenceManager(private val context: Context) {
 
     private val HORIZONTAL_COMPRESSION_SENSITIVITY_KEY = intPreferencesKey("horizontal_compression_sensitivity_int")
     fun getHorizontalCompressionSensitivity(): Flow<Int> = context.dataStore.data.map { prefs ->
-        prefs[HORIZONTAL_COMPRESSION_SENSITIVITY_KEY] ?: 50
+        prefs[HORIZONTAL_COMPRESSION_SENSITIVITY_KEY] ?: DEFAULT_HORIZONTAL_COMPRESSION_SENSITIVITY
     }
     suspend fun setHorizontalCompressionSensitivity(value: Int) {
         context.dataStore.edit { prefs ->
@@ -106,7 +106,7 @@ class SettingsPreferenceManager(private val context: Context) {
 
     private val ALLOW_STATS_KEY = booleanPreferencesKey("allow_stats")
     fun getAllowStats(): Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[ALLOW_STATS_KEY] ?: true
+        prefs[ALLOW_STATS_KEY] ?: DEFAULT_ALLOW_STATS
     }
     suspend fun setAllowStats(value: Boolean) {
         context.dataStore.edit { prefs ->
@@ -116,7 +116,7 @@ class SettingsPreferenceManager(private val context: Context) {
 
     private val IS_FIRST_LAUNCH_KEY = booleanPreferencesKey("app_first_launch")
     fun isFirstLaunch(): Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[IS_FIRST_LAUNCH_KEY] ?: true
+        prefs[IS_FIRST_LAUNCH_KEY] ?: DEFAULT_FIRST_LAUNCH
     }
     suspend fun setFirstLaunch(value: Boolean) {
         context.dataStore.edit { prefs ->

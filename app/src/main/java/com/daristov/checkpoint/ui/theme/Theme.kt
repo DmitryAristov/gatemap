@@ -11,20 +11,6 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.daristov.checkpoint.screens.settings.AppThemeMode
 
-//private val LightColors = lightColorScheme(
-//    primary = LightPrimary,
-//    secondary = LightSecondary,
-//    background = LightBackground,
-//    surface = LightSurface
-//)
-//
-//private val DarkColors = darkColorScheme(
-//    primary = DarkPrimary,
-//    secondary = DarkSecondary,
-//    background = DarkBackground,
-//    surface = DarkSurface
-//)
-
 val LightColors = lightColorScheme(
     primary = LightPrimary,
     background = LightBackground,

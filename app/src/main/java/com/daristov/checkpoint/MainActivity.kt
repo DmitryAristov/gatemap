@@ -16,6 +16,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContent {
             val settingsViewModel: SettingsViewModel = viewModel()
             val theme by settingsViewModel.themeMode.collectAsState()

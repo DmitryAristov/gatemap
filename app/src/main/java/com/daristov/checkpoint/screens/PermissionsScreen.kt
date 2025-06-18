@@ -21,8 +21,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.daristov.checkpoint.R
 
 @Composable
 fun PermissionsScreen(
@@ -63,12 +65,12 @@ fun PermissionsScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("Для работы приложения требуется доступ к камере и местоположению.")
+            Text(stringResource(R.string.permission_required))
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = { permissionLauncher.launch(permissions.toTypedArray()) }
             ) {
-                Text("Предоставить доступ")
+                Text(stringResource(R.string.grant_permission))
             }
         }
     }
