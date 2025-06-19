@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 
 val LightPrimary = Color(0xFF202020)
 val LightBackground = Color(0xFFEEEEEE)
-val LightOnBackground = Color(0xFF121212)
+val LightOnBackground = Color(0xFF202020)
 val LightSurface = Color(0xFFFFFFFF)
 val LightOnSurface = Color(0xFF202020)
 

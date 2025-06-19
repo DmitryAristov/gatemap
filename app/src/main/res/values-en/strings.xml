@@ -9,6 +9,7 @@
     <string name="night">Night</string>
     <string name="day">Day</string>
     <string name="mode">Mode</string>
+    <string name="slide_to_dismiss">Slide to dismiss</string>
 
 
     <string name="loading_map">Loading map…</string>

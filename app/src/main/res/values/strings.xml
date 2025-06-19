@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Checkpoint</string>
+    <string name="app_name">Gatemap</string>
     <string name="maptiler_api_key">AL3U3T6PM9wdAGgBJTRF</string>
 
     <string name="motion_sensor">Датчик движения</string>
@@ -9,6 +9,7 @@
     <string name="night">Ночь</string>
     <string name="day">День</string>
     <string name="mode">Режим</string>
+    <string name="slide_to_dismiss">Сдвиньте, чтобы отключить</string>
 
 
     <string name="loading_map">Загружаем карту…</string>

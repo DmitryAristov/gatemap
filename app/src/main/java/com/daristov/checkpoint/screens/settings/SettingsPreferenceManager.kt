@@ -1,6 +1,7 @@
 package com.daristov.checkpoint.screens.settings
 
 import android.content.Context
+import android.media.RingtoneManager
 import android.net.Uri
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -94,13 +95,16 @@ class SettingsPreferenceManager(private val context: Context) {
     }
 
     private val RINGTONE_KEY = stringPreferencesKey("alarm_ringtone_uri")
-    fun getAlarmUri(): Flow<Uri?> = context.dataStore.data.map { prefs ->
-        prefs[RINGTONE_KEY]?.toUri()
+    fun getAlarmUri(): Flow<Uri> = context.dataStore.data.map { prefs ->
+        if (prefs.contains(RINGTONE_KEY)) {
+            return@map prefs[RINGTONE_KEY]!!.toUri()
+        } else {
+            return@map RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        }
     }
-    suspend fun setAlarmUri(uri: Uri?) {
+    suspend fun setAlarmUri(uri: Uri) {
         context.dataStore.edit { prefs ->
-            if (uri != null) prefs[RINGTONE_KEY] = uri.toString()
-            else prefs.remove(RINGTONE_KEY)
+            prefs[RINGTONE_KEY] = uri.toString()
         }
     }
 

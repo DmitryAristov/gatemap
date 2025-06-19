@@ -42,7 +42,8 @@ class AlarmViewModel(
     private var isAutoDayNightDetectEnabled: Boolean = DEFAULT_AUTO_DAY_NIGHT_DETECT
     private var stableTrajectoryRatio: Double = DEFAULT_STABLE_TRAJECTORY_SENSITIVITY * 0.01
     private var verticalMovementSensitivity: Double = DEFAULT_VERTICAL_MOVEMENT_SENSITIVITY * 0.01
-    private var horizontalCompressionSensitivity: Double = DEFAULT_HORIZONTAL_COMPRESSION_SENSITIVITY * 0.01
+    private var horizontalCompressionSensitivity: Double =
+        DEFAULT_HORIZONTAL_COMPRESSION_SENSITIVITY * 0.01
 
     init {
         viewModelScope.launch {
@@ -73,8 +74,10 @@ class AlarmViewModel(
         if (frameWidth == 0 || frameHeight == 0) {
             frameWidth = bitmap.width
             frameHeight = bitmap.height
-            motionDetector = RearLightsMotionDetector(frameWidth, frameHeight,
-                verticalMovementSensitivity, horizontalCompressionSensitivity, stableTrajectoryRatio)
+            motionDetector = RearLightsMotionDetector(
+                frameWidth, frameHeight,
+                verticalMovementSensitivity, horizontalCompressionSensitivity, stableTrajectoryRatio
+            )
         }
 
         val mat = Mat()
@@ -83,7 +86,8 @@ class AlarmViewModel(
         val hsv = Mat()
         Imgproc.cvtColor(mat, hsv, Imgproc.COLOR_BGR2HSV)
 
-        val isNight = if (isAutoDayNightDetectEnabled) lightsDetector.isNightImage(hsv) else uiState.value.isNight
+        val isNight =
+            if (isAutoDayNightDetectEnabled) lightsDetector.isNightImage(hsv) else uiState.value.isNight
         _uiState.update {
             it.copy(
                 isNight = isNight,
@@ -133,6 +137,10 @@ class AlarmViewModel(
                 isNight = isNight
             )
         }
+    }
+
+    fun resetMotionDetection() {
+        _uiState.update { it.copy(motionDetected = false) }
     }
 }
 
