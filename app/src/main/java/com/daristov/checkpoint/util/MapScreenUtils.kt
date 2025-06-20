@@ -18,10 +18,12 @@ import com.daristov.checkpoint.screens.mapscreen.CustomMapObject
 import com.daristov.checkpoint.screens.mapscreen.DEFAULT_MAP_ANIMATION_DURATION
 import com.daristov.checkpoint.screens.mapscreen.DEFAULT_TILT
 import com.daristov.checkpoint.screens.mapscreen.DEFAULT_ZOOM
+import com.daristov.checkpoint.screens.settings.AppTrackingMode
 import com.daristov.checkpoint.service.CustomLocationEngine
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLngBounds
+import org.maplibre.android.location.LocationComponent
 import org.maplibre.android.location.LocationComponentActivationOptions
 import org.maplibre.android.location.LocationComponentOptions
 import org.maplibre.android.location.modes.CameraMode
@@ -170,9 +172,12 @@ object MapScreenUtils {
     }
 
     @SuppressLint("MissingPermission")
-    fun MapLibreMap.loadLocationComponent(context: Context) {
+    fun MapLibreMap.loadLocationComponent(
+        context: Context,
+        trackingMode: AppTrackingMode
+    ) {
         locationComponent.apply {
-            val customLocationEngine = CustomLocationEngine()
+            val customLocationEngine = CustomLocationEngine(this, trackingMode)
             style?.let {
                 activateLocationComponent(
                     LocationComponentActivationOptions.builder(context, it)
@@ -299,7 +304,7 @@ object MapScreenUtils {
         return Math.toDegrees(atan2(y, x))
     }
 
-    fun MapView.setupTrackingButton(location: Location) {
+    fun MapView.setupTrackingButton(location: Location, trackingMode: AppTrackingMode) {
         getMapAsync { map ->
             map.animateCamera(
                 CameraUpdateFactory.newCameraPosition(
@@ -312,9 +317,21 @@ object MapScreenUtils {
                 DEFAULT_MAP_ANIMATION_DURATION,
                 object : CancelableCallback {
                     override fun onFinish() {
-                        if (map.locationComponent.isLocationComponentActivated)
-                            map.locationComponent.cameraMode =
-                                CameraMode.TRACKING_COMPASS
+                        if (!map.locationComponent.isLocationComponentActivated) {
+                            return
+                        }
+
+                        if (trackingMode == AppTrackingMode.GPS || (trackingMode == AppTrackingMode.AUTO && location.speed > 2.0)) {
+                            map.locationComponent.cameraMode = CameraMode.TRACKING_GPS
+                            map.locationComponent.renderMode = RenderMode.GPS
+                            return
+                        }
+
+                        if (trackingMode == AppTrackingMode.COMPASS || (trackingMode == AppTrackingMode.AUTO && location.speed <= 2.0)) {
+                            map.locationComponent.cameraMode = CameraMode.TRACKING_COMPASS
+                            map.locationComponent.renderMode = RenderMode.COMPASS
+                            return
+                        }
                     }
 
                     override fun onCancel() {
@@ -361,5 +378,22 @@ object MapScreenUtils {
     fun createCustomIcon(context: Context, @DrawableRes resId: Int): Bitmap {
         val drawable = ContextCompat.getDrawable(context, resId) ?: error("Drawable not found")
         return drawable.toBitmap()
+    }
+
+    fun updateRenderMode(component: LocationComponent, mode: AppTrackingMode, location: Location) {
+        if (mode != AppTrackingMode.AUTO) {
+            return
+        }
+
+        if (component.cameraMode == CameraMode.TRACKING_GPS && location.speed <= 2.0) {
+            component.cameraMode = CameraMode.TRACKING_COMPASS
+            component.renderMode = RenderMode.COMPASS
+            return
+        }
+        if (component.cameraMode == CameraMode.TRACKING_COMPASS && location.speed > 2.0) {
+            component.cameraMode = CameraMode.TRACKING_GPS
+            component.renderMode = RenderMode.GPS
+            return
+        }
     }
 }

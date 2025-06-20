@@ -33,6 +33,19 @@ enum class AppThemeMode() {
     }
 }
 
+enum class AppTrackingMode() {
+    COMPASS,
+    GPS,
+    AUTO;
+
+    @StringRes
+    fun labelRes(): Int = when (this) {
+        COMPASS -> R.string.tracking_compass
+        GPS -> R.string.tracking_gps
+        AUTO -> R.string.tracking_auto
+    }
+}
+
 enum class AppLanguage(val code: String, val label: String) {
     RU("ru", "Русский"),
     KZ("kk", "Қазақша"),
@@ -47,6 +60,7 @@ enum class AppLanguage(val code: String, val label: String) {
 
 val DEFAULT_THEME = AppThemeMode.SYSTEM
 val DEFAULT_LANGUAGE = AppLanguage.RU
+val DEFAULT_TRACKING_MODE = AppTrackingMode.AUTO
 const val DEFAULT_AUTO_DAY_NIGHT_DETECT = true
 const val DEFAULT_3D_ENABLED = true
 const val DEFAULT_ALLOW_STATS = true
@@ -67,6 +81,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _horizontalCompressionSensitivity = MutableStateFlow(DEFAULT_HORIZONTAL_COMPRESSION_SENSITIVITY)
     private val _allowStats = MutableStateFlow(DEFAULT_ALLOW_STATS)
     private val _isFirstLaunch = MutableStateFlow(DEFAULT_FIRST_LAUNCH)
+    private val _trackingMode = MutableStateFlow(DEFAULT_TRACKING_MODE)
 
     val themeMode: StateFlow<AppThemeMode> = _themeMode
     val language: StateFlow<AppLanguage> = _language
@@ -79,6 +94,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         private set
     val allowStats: StateFlow<Boolean> = _allowStats
     val isFirstLaunch: StateFlow<Boolean> = _isFirstLaunch
+    val trackingMode: StateFlow<AppTrackingMode> = _trackingMode
 
     init {
         viewModelScope.launch {
@@ -119,6 +135,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
         viewModelScope.launch {
             pref.isFirstLaunch().collect { _isFirstLaunch.value = it }
+        }
+
+        viewModelScope.launch {
+            pref.getTrackingMode().collect { _trackingMode.value = it }
         }
     }
 
@@ -187,6 +207,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _isFirstLaunch.value = value
         viewModelScope.launch {
             pref.setFirstLaunch(value)
+        }
+    }
+
+    fun changeTrackingMode(value: AppTrackingMode) {
+        _trackingMode.value = value
+        viewModelScope.launch {
+            pref.setTrackingMode(value)
         }
     }
 

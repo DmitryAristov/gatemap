@@ -37,6 +37,10 @@
     <string name="auto_day_night">Auto Day/Night</string>
     <string name="map_settings">Map Settings</string>
     <string name="map_3d_mode">3D Map Mode</string>
+    <string name="tracking_mode">Tracking mode</string>
+    <string name="tracking_compass">Compass</string>
+    <string name="tracking_gps">GPS</string>
+    <string name="tracking_auto">Auto</string>
 
 
     <string name="low">Low</string>

@@ -37,6 +37,10 @@
     <string name="auto_day_night">Авто күн/түн</string>
     <string name="map_settings">Карта параметрлері</string>
     <string name="map_3d_mode">3D карта режимі</string>
+    <string name="tracking_mode">Бақылау режимі</string>
+    <string name="tracking_compass">Компас</string>
+    <string name="tracking_gps">GPS</string>
+    <string name="tracking_auto">Авто</string>
 
 
     <string name="low">Төмен</string>

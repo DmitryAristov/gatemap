@@ -94,6 +94,7 @@ fun MapScreen(onBack: () -> Unit,
     val customs by viewModel.customs.collectAsState()
     val currentStep by viewModel.currentStep.collectAsState()
     val isInitialZoomDone by viewModel.isInitialZoomDone.collectAsState()
+    val trackingMode by settingsViewModel.trackingMode.collectAsState()
 
     val mapView = rememberConfiguredMapView(viewModel, theme, is3DEnabled)
 
@@ -119,7 +120,7 @@ fun MapScreen(onBack: () -> Unit,
             )
         }
     ) { padding ->
-        MapContainer(mapView, onOpenAlarm, onOpenChat, viewModel, padding)
+        MapContainer(mapView, onOpenAlarm, onOpenChat, viewModel, settingsViewModel, padding)
     }
 
     BackHandler { onBack() }
@@ -137,7 +138,7 @@ fun MapScreen(onBack: () -> Unit,
             if (currentStep != MapInitStep.LOADING_LOCATION) return@LaunchedEffect
             mapView.getMapAsync { map ->
                 val userLatLng = LatLng(it)
-                map.loadLocationComponent(context)
+                map.loadLocationComponent(context, trackingMode)
                 map.cameraPosition = CameraPosition.Builder()
                     .tilt(DEFAULT_TILT)
                     .zoom(DEFAULT_ZOOM)
@@ -168,6 +169,7 @@ fun MapContainer(mapView: MapView,
                  onOpenAlarm: () -> Unit,
                  onOpenChat: (String) -> Unit,
                  viewModel: MapViewModel,
+                 settingsViewModel: SettingsViewModel,
                  padding: PaddingValues) {
     val inCustomArea by viewModel.insideCustomArea.collectAsState()
     val currentStep by viewModel.currentStep.collectAsState()
@@ -175,6 +177,7 @@ fun MapContainer(mapView: MapView,
     val location by LocationRepository.locationFlow.collectAsState()
     val selectedCustomId by viewModel.selectedCustomId.collectAsState()
     val isSurveyVisible by viewModel.isSurveyVisible.collectAsState()
+    val trackingMode by settingsViewModel.trackingMode.collectAsState()
 
     Box(
         modifier = Modifier
@@ -239,7 +242,7 @@ fun MapContainer(mapView: MapView,
 
                 IconButton(
                     onClick = {
-                        location?.let { mapView.setupTrackingButton(it) }
+                        location?.let { mapView.setupTrackingButton(it, trackingMode) }
                     },
                     modifier = Modifier
                         .size(56.dp)

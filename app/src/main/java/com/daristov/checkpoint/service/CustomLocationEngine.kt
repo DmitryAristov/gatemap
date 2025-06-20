@@ -2,16 +2,22 @@ package com.daristov.checkpoint.service
 
 import android.app.PendingIntent
 import android.os.Looper
+import com.daristov.checkpoint.screens.settings.AppTrackingMode
+import com.daristov.checkpoint.util.MapScreenUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import org.maplibre.android.location.LocationComponent
 import org.maplibre.android.location.engine.LocationEngine
 import org.maplibre.android.location.engine.LocationEngineCallback
 import org.maplibre.android.location.engine.LocationEngineRequest
 import org.maplibre.android.location.engine.LocationEngineResult
 
-class CustomLocationEngine : LocationEngine {
+class CustomLocationEngine(
+    private val locationComponent: LocationComponent,
+    private val trackingMode: AppTrackingMode
+) : LocationEngine {
 
     override fun getLastLocation(callback: LocationEngineCallback<LocationEngineResult>) {
         LocationRepository.getLatestLocation()?.let {
@@ -28,6 +34,7 @@ class CustomLocationEngine : LocationEngine {
             .onEach {
                 it?.let { location ->
                     callback.onSuccess(LocationEngineResult.create(location))
+                    MapScreenUtils.updateRenderMode(locationComponent, trackingMode, location)
                 }
             }
             .launchIn(CoroutineScope(Dispatchers.Main))

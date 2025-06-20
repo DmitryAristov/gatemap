@@ -88,6 +88,7 @@ fun SettingsContainer(
     val horizontalSensitivity by viewModel.horizontalCompressionSensitivity.collectAsState()
     val selectedAlarmUri = viewModel.selectedAlarmUri
     val allowStats by viewModel.allowStats.collectAsState()
+    val trackingMode by viewModel.trackingMode.collectAsState()
 
     Column(
         modifier = Modifier
@@ -208,6 +209,19 @@ fun SettingsContainer(
                 title = stringResource(R.string.map_3d_mode),
                 checked = is3DEnabled,
                 onCheckedChange = { viewModel.change3DEnabled(it) }
+            )
+
+            val trackingLabels = AppTrackingMode.entries.associateWith { stringResource(it.labelRes()) }
+            SettingRowDropdown(
+                icon = Icons.Default.DarkMode,
+                title = stringResource(R.string.tracking_mode),
+                value = stringResource(trackingMode.labelRes()),
+                options = AppTrackingMode.entries.map { stringResource(it.labelRes()) },
+                onSelect = { label ->
+                    trackingLabels.entries.firstOrNull { it.value == label }?.key?.let {
+                        viewModel.changeTrackingMode(it)
+                    }
+                }
             )
         }
     }

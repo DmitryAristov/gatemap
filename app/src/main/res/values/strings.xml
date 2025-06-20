@@ -37,6 +37,10 @@
     <string name="auto_day_night">Авто день/ночь</string>
     <string name="map_settings">Параметры карты</string>
     <string name="map_3d_mode">3D режим карты</string>
+    <string name="tracking_mode">Режим слежения</string>
+    <string name="tracking_compass">Компас</string>
+    <string name="tracking_gps">GPS</string>
+    <string name="tracking_auto">Авто</string>
 
 
     <string name="low">Низкая</string>

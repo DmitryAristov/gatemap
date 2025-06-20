@@ -127,5 +127,19 @@ class SettingsPreferenceManager(private val context: Context) {
             prefs[IS_FIRST_LAUNCH_KEY] = value
         }
     }
+
+    private val TRACKING_MODE_KEY = stringPreferencesKey("app_tracking_mode")
+    fun getTrackingMode(): Flow<AppTrackingMode> = context.dataStore.data.map { prefs ->
+        when (prefs[TRACKING_MODE_KEY]) {
+            "COMPASS" -> AppTrackingMode.COMPASS
+            "GPS" -> AppTrackingMode.GPS
+            else -> DEFAULT_TRACKING_MODE
+        }
+    }
+    suspend fun setTrackingMode(mode: AppTrackingMode) {
+        context.dataStore.edit { prefs ->
+            prefs[TRACKING_MODE_KEY] = mode.name
+        }
+    }
 }
 
