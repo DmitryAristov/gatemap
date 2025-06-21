@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.location.Location
+import android.os.Build
 import android.util.SizeF
 import androidx.annotation.DrawableRes
 import androidx.core.content.ContextCompat
@@ -57,6 +58,8 @@ private const val CUSTOMS_LAYER = "customs-layer"
 private const val CUSTOMS_SOURCE = "customs-source"
 private const val CUSTOMS_ICON = "customs-icon"
 
+private const val BEARING_ACCURACY = 10f
+
 object MapScreenUtils {
 
     fun MapLibreMap.setupInteractionListeners(viewModel: MapViewModel) {
@@ -90,7 +93,7 @@ object MapScreenUtils {
             }
         }
 
-        addOnCameraMoveListener {  ->
+        addOnCameraMoveListener { ->
             if (viewModel.selectedCustomId.value != null) {
                 viewModel.clearSelectedCustom()
                 return@addOnCameraMoveListener
@@ -235,7 +238,8 @@ object MapScreenUtils {
         val height = this.height
 
         val paddingPx = 100
-        val zoom = CameraUpdateFactory.zoomForBounds(bounds, width - 2 * paddingPx, height - 2 * paddingPx)
+        val zoom =
+            CameraUpdateFactory.zoomForBounds(bounds, width - 2 * paddingPx, height - 2 * paddingPx)
 
         // Направление от пользователя к первому КПП
         val heading = computeHeading(userLatLng, nearest.first())
@@ -255,7 +259,10 @@ object MapScreenUtils {
                 .tilt(DEFAULT_TILT)
                 .build()
 
-            map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), DEFAULT_MAP_ANIMATION_DURATION)
+            map.animateCamera(
+                CameraUpdateFactory.newCameraPosition(cameraPosition),
+                DEFAULT_MAP_ANIMATION_DURATION
+            )
         }
     }
 
@@ -317,20 +324,31 @@ object MapScreenUtils {
                 DEFAULT_MAP_ANIMATION_DURATION,
                 object : CancelableCallback {
                     override fun onFinish() {
-                        if (!map.locationComponent.isLocationComponentActivated) {
-                            return
-                        }
+                        if (!map.locationComponent.isLocationComponentActivated) return
 
-                        if (trackingMode == AppTrackingMode.GPS || (trackingMode == AppTrackingMode.AUTO && location.speed > 2.0)) {
-                            map.locationComponent.cameraMode = CameraMode.TRACKING_GPS
-                            map.locationComponent.renderMode = RenderMode.GPS
-                            return
-                        }
+                        val hasGpsBearing = location.hasBearing()
+                        val hasGoodGpsBearing = location.hasBearingAccuracy() && location.bearingAccuracyDegrees <= BEARING_ACCURACY
 
-                        if (trackingMode == AppTrackingMode.COMPASS || (trackingMode == AppTrackingMode.AUTO && location.speed <= 2.0)) {
-                            map.locationComponent.cameraMode = CameraMode.TRACKING_COMPASS
-                            map.locationComponent.renderMode = RenderMode.COMPASS
-                            return
+                        when (trackingMode) {
+                            AppTrackingMode.GPS -> {
+                                map.locationComponent.cameraMode = CameraMode.TRACKING_GPS
+                                map.locationComponent.renderMode = RenderMode.GPS
+                            }
+
+                            AppTrackingMode.COMPASS -> {
+                                map.locationComponent.cameraMode = CameraMode.TRACKING_COMPASS
+                                map.locationComponent.renderMode = RenderMode.COMPASS
+                            }
+
+                            AppTrackingMode.AUTO -> {
+                                if (hasGpsBearing && hasGoodGpsBearing) {
+                                    map.locationComponent.cameraMode = CameraMode.TRACKING_GPS
+                                    map.locationComponent.renderMode = RenderMode.GPS
+                                } else {
+                                    map.locationComponent.cameraMode = CameraMode.TRACKING_COMPASS
+                                    map.locationComponent.renderMode = RenderMode.COMPASS
+                                }
+                            }
                         }
                     }
 
@@ -381,19 +399,25 @@ object MapScreenUtils {
     }
 
     fun updateRenderMode(component: LocationComponent, mode: AppTrackingMode, location: Location) {
-        if (mode != AppTrackingMode.AUTO) {
-            return
-        }
+        if (mode != AppTrackingMode.AUTO) return
 
-        if (component.cameraMode == CameraMode.TRACKING_GPS && location.speed <= 2.0) {
-            component.cameraMode = CameraMode.TRACKING_COMPASS
-            component.renderMode = RenderMode.COMPASS
-            return
-        }
-        if (component.cameraMode == CameraMode.TRACKING_COMPASS && location.speed > 2.0) {
-            component.cameraMode = CameraMode.TRACKING_GPS
-            component.renderMode = RenderMode.GPS
-            return
+        val hasGpsBearing = location.hasBearing()
+        val hasGoodGpsBearing = location.hasBearingAccuracy() && location.bearingAccuracyDegrees <= BEARING_ACCURACY
+
+        when (component.cameraMode) {
+            CameraMode.TRACKING_GPS -> {
+                if (!hasGpsBearing) {
+                    component.cameraMode = CameraMode.TRACKING_COMPASS
+                    component.renderMode = RenderMode.COMPASS
+                }
+            }
+
+            CameraMode.TRACKING_COMPASS -> {
+                if (hasGpsBearing && hasGoodGpsBearing) {
+                    component.cameraMode = CameraMode.TRACKING_GPS
+                    component.renderMode = RenderMode.GPS
+                }
+            }
         }
     }
 }
