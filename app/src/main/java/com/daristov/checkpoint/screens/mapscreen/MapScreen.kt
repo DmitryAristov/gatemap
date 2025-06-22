@@ -319,7 +319,7 @@ fun rememberConfiguredMapView(
 @Composable
 fun SurveyPanel(
     viewModel: MapViewModel,
-    inCustomArea: CustomMapObject,
+    inCustomArea: Checkpoint,
     modifier: Modifier = Modifier
 ) {
     var sliderValue by remember { mutableFloatStateOf(50f) }

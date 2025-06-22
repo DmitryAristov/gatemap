@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.location.Location
-import android.os.Build
 import android.util.SizeF
 import androidx.annotation.DrawableRes
 import androidx.core.content.ContextCompat
@@ -15,7 +14,7 @@ import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
 import androidx.core.graphics.drawable.toBitmap
 import com.daristov.checkpoint.screens.mapscreen.CUSTOMS_AREA_RADIUS
-import com.daristov.checkpoint.screens.mapscreen.CustomMapObject
+import com.daristov.checkpoint.screens.mapscreen.Checkpoint
 import com.daristov.checkpoint.screens.mapscreen.DEFAULT_MAP_ANIMATION_DURATION
 import com.daristov.checkpoint.screens.mapscreen.DEFAULT_TILT
 import com.daristov.checkpoint.screens.mapscreen.DEFAULT_ZOOM
@@ -135,7 +134,7 @@ object MapScreenUtils {
         style?.getSourceAs<GeoJsonSource>(CUSTOMS_SOURCE)?.setGeoJson(newCollection)
     }
 
-    fun buildFeatureCollection(customs: List<CustomMapObject>): FeatureCollection {
+    fun buildFeatureCollection(customs: List<Checkpoint>): FeatureCollection {
         val features = customs.map {
             val feature = Feature.fromGeometry(Point.fromLngLat(it.longitude, it.latitude))
             feature.addStringProperty("id", it.id)

@@ -73,6 +73,7 @@ dependencies {
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.35.0-alpha")
     val composeBom = platform("androidx.compose:compose-bom:2024.05.00")
     implementation(composeBom)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

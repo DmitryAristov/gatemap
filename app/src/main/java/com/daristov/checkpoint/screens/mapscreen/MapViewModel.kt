@@ -5,7 +5,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.daristov.checkpoint.service.LocationRepository
-import com.daristov.checkpoint.service.OverpassAPI
+import com.daristov.checkpoint.service.GatemapAPI
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +17,7 @@ import org.maplibre.android.geometry.LatLngBounds
 import kotlin.collections.plus
 import kotlin.math.floor
 
-const val CUSTOMS_TILE_SIZE_DEGREES = 1.0
+const val CUSTOMS_TILE_SIZE_DEGREES = 3.0
 const val CUSTOMS_TILE_REQUEST_DELAY_MS = 100L
 const val MIN_ZOOM_FOR_TILES_LOAD = 9.0
 const val SURVEY_DISMISSAL_TIMEOUT = 5_000L
@@ -25,11 +25,11 @@ const val SURVEY_REENABLE_TIMEOUT = 20_000L
 
 class MapViewModel : ViewModel() {
 
-    private val overpassAPI: OverpassAPI = OverpassAPI()
+    private val gatemapAPI: GatemapAPI = GatemapAPI()
     private val _location = MutableStateFlow<Location?>(null)
-    private val _customs = MutableStateFlow<List<CustomMapObject>>(emptyList())
+    private val _customs = MutableStateFlow<List<Checkpoint>>(emptyList())
     private val _currentStep = MutableStateFlow<MapInitStep>(MapInitStep.LOADING_MAP)
-    private val _insideCustomArea = MutableStateFlow<CustomMapObject?>(null)
+    private val _insideCustomArea = MutableStateFlow<Checkpoint?>(null)
     private val _isInitialZoomDone = MutableStateFlow<Boolean>(false)
     private val _visibleMarkerIds = MutableStateFlow<MutableSet<String>>(mutableSetOf())
     private val _selectedCustomId = MutableStateFlow<String?>(null)
@@ -48,10 +48,10 @@ class MapViewModel : ViewModel() {
         startTileLoader()
     }
 
-    val customs: StateFlow<List<CustomMapObject>> = _customs
+    val customs: StateFlow<List<Checkpoint>> = _customs
     val currentStep: StateFlow<MapInitStep> = _currentStep
     val isInitialZoomDone: StateFlow<Boolean> = _isInitialZoomDone
-    val insideCustomArea: StateFlow<CustomMapObject?> = _insideCustomArea
+    val insideCustomArea: StateFlow<Checkpoint?> = _insideCustomArea
     val visibleMarkerIds: StateFlow<MutableSet<String>> = _visibleMarkerIds
     val selectedCustomId: StateFlow<String?> = _selectedCustomId
     val isSurveyVisible: StateFlow<Boolean> = _isSurveyVisible
@@ -77,7 +77,7 @@ class MapViewModel : ViewModel() {
             for (tile in pendingTilesQueue) {
                 delay(CUSTOMS_TILE_REQUEST_DELAY_MS)
                 try {
-                    val result = overpassAPI.loadTile(tile)
+                    val result = gatemapAPI.loadTile(tile)
                     _customs.update { it + result }
                     loadedTiles.add(tile)
                 } catch (e: Exception) {
@@ -104,7 +104,7 @@ class MapViewModel : ViewModel() {
         }
     }
 
-    fun findNearestCustoms(from: LatLng, count: Int = 4): List<CustomMapObject> {
+    fun findNearestCustoms(from: LatLng, count: Int = 4): List<Checkpoint> {
         return customs.value
             .sortedBy { it.location.distanceTo(from) }
             .take(count)
@@ -122,7 +122,7 @@ class MapViewModel : ViewModel() {
         _isInitialZoomDone.value = done
     }
 
-    fun setInsideCustomArea(custom: CustomMapObject) {
+    fun setInsideCustomArea(custom: Checkpoint) {
         _insideCustomArea.value = custom
     }
 
@@ -174,7 +174,7 @@ class MapViewModel : ViewModel() {
         //TODO("Not yet implemented")
     }
 
-    fun getCustomMapObject(customId: String): CustomMapObject? {
+    fun getCustomMapObject(customId: String): Checkpoint? {
         return customs.value.find { it.id == customId }
     }
 
@@ -189,7 +189,7 @@ class MapViewModel : ViewModel() {
     }
 }
 
-data class CustomMapObject(
+data class Checkpoint(
     val id: String,
     val name: String,
     val queueSize: Int = 0,
